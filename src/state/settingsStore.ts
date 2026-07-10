@@ -6,12 +6,15 @@ export interface Settings {
   appearance: { reduceMotion: boolean };
   terminal: {
     fontSize: number; // px
+    // Command new terminals launch. Blank = the platform default (the user's
+    // login `$SHELL` on Unix, PowerShell on Windows).
+    shell: string;
   };
 }
 
 const DEFAULTS: Settings = {
   appearance: { reduceMotion: false },
-  terminal: { fontSize: 13 },
+  terminal: { fontSize: 13, shell: "" },
 };
 
 const STORAGE_KEY = "podium.settings";

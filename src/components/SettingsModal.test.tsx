@@ -50,6 +50,7 @@ vi.mock("@tauri-apps/api/core", () => ({
 }));
 
 import { SettingsModal } from "./SettingsModal";
+import { useSettingsStore } from "../state/settingsStore";
 
 async function openAgentsTab() {
   render(<SettingsModal open onClose={() => undefined} />);
@@ -115,5 +116,15 @@ describe("SettingsModal — Agents tab", () => {
         mode: "project-overrides",
       }),
     );
+  });
+});
+
+describe("SettingsModal — General tab", () => {
+  it("persists the preferred terminal shell", () => {
+    render(<SettingsModal open onClose={() => undefined} />);
+    fireEvent.change(screen.getByLabelText("Shell"), {
+      target: { value: "pwsh" },
+    });
+    expect(useSettingsStore.getState().terminal.shell).toBe("pwsh");
   });
 });

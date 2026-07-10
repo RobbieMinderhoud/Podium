@@ -9,27 +9,12 @@
 
 use std::borrow::Cow;
 use std::path::Path;
-use std::process::{Command, Stdio};
 
 use crate::error::{CoreError, CoreResult};
+use crate::platform::run_shell_ok as login_shell_ok;
 
 /// The server name Podium registers under in external clients.
 pub const SERVER_NAME: &str = "podium";
-
-/// Run `cmd` via the login shell, discarding all output. Returns whether it
-/// exited successfully.
-fn login_shell_ok(cmd: &str) -> bool {
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string());
-    Command::new(shell)
-        .arg("-lc")
-        .arg(cmd)
-        .stdin(Stdio::null())
-        .stdout(Stdio::null())
-        .stderr(Stdio::null())
-        .status()
-        .map(|status| status.success())
-        .unwrap_or(false)
-}
 
 fn quote(arg: &str) -> CoreResult<String> {
     shlex::try_quote(arg)
@@ -48,7 +33,7 @@ pub struct ClaudeClientStatus {
 
 /// Probe the Claude Code CLI: is it on PATH, and is `podium` registered?
 pub fn claude_status() -> ClaudeClientStatus {
-    let cli_available = login_shell_ok("command -v claude");
+    let cli_available = login_shell_ok(&crate::platform::command_exists_query("claude"));
     let installed = cli_available && login_shell_ok(&format!("claude mcp get {SERVER_NAME}"));
     ClaudeClientStatus {
         cli_available,
@@ -68,7 +53,7 @@ pub fn claude_add_command(exe: &Path) -> CoreResult<String> {
 /// Register the bridge with Claude Code, replacing any existing `podium`
 /// entry first (so re-runs and moved binaries just work).
 pub fn claude_install(exe: &Path) -> CoreResult<()> {
-    if !login_shell_ok("command -v claude") {
+    if !login_shell_ok(&crate::platform::command_exists_query("claude")) {
         return Err(CoreError::Config(
             "Claude Code CLI (`claude`) not found on PATH".to_string(),
         ));

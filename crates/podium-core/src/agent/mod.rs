@@ -8,7 +8,6 @@
 
 pub mod settings;
 
-use std::borrow::Cow;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -16,7 +15,7 @@ use std::sync::Arc;
 
 use serde::Serialize;
 
-use crate::error::{CoreError, CoreResult};
+use crate::error::CoreResult;
 use crate::ids::{ProcessId, ProjectId};
 
 /// Everything an adapter may need to build a [`LaunchPlan`].
@@ -124,17 +123,17 @@ impl AgentAdapter for CliAdapter {
 
     fn build_launch(&self, ctx: &AgentLaunchCtx) -> CoreResult<LaunchPlan> {
         let bin = ctx.command_override.unwrap_or(self.binary);
-        let mut args: Vec<String> = vec![quote(bin)?];
+        let mut args: Vec<String> = vec![crate::platform::quote_arg(bin)?];
         if let Some(prompt) = ctx.prompt {
-            args.push(quote(prompt)?);
+            args.push(crate::platform::quote_arg(prompt)?);
         }
         for arg in ctx.extra_args {
-            args.push(quote(arg)?);
+            args.push(crate::platform::quote_arg(arg)?);
         }
         if let Some(mcp) = ctx.mcp {
             let path = write_mcp_config(mcp, ctx.process_id)?;
             args.push("--mcp-config".to_string());
-            args.push(quote(&path.to_string_lossy())?);
+            args.push(crate::platform::quote_arg(&path.to_string_lossy())?);
         }
         Ok(LaunchPlan {
             command: args.join(" "),
@@ -144,12 +143,6 @@ impl AgentAdapter for CliAdapter {
             ],
         })
     }
-}
-
-fn quote(arg: &str) -> CoreResult<String> {
-    shlex::try_quote(arg)
-        .map(Cow::into_owned)
-        .map_err(|e| CoreError::InvalidInput(format!("cannot quote argument: {e}")))
 }
 
 /// Write `contents` to `path` with owner-only permissions (0600) — used for
@@ -251,6 +244,21 @@ mod tests {
     use super::*;
     use std::fs;
 
+    /// Round-trips a built [`LaunchPlan::command`] back into argv, using
+    /// whichever tokenizer matches the shell `login_shell()` actually runs it
+    /// through on this OS — `shlex` for `$SHELL -lc`, the Windows argv parser
+    /// for `cmd.exe /C`.
+    fn split_command(cmd: &str) -> Vec<String> {
+        #[cfg(unix)]
+        {
+            shlex::split(cmd).expect("valid shell line")
+        }
+        #[cfg(windows)]
+        {
+            crate::platform::parse_windows_argv(cmd)
+        }
+    }
+
     #[test]
     fn default_registry_exposes_claude_and_auggie() {
         let registry = AdapterRegistry::default();
@@ -303,14 +311,25 @@ mod tests {
         let extra = vec!["--verbose".to_string(), "two words".to_string()];
         let (plan, _, _) = plan(Some(prompt), &extra, None);
         // Round-trip through a shell tokenizer: quoting must preserve args.
-        let tokens = shlex::split(&plan.command).expect("valid shell line");
+        let tokens = split_command(&plan.command);
         assert_eq!(tokens, vec!["claude", prompt, "--verbose", "two words"]);
+    }
+
+    #[test]
+    fn prompt_with_apostrophe_survives_intact() {
+        // Regression: a to-do-assignment prompt starting "You're the
+        // assigned agent…" must arrive as one argument, not get truncated at
+        // the apostrophe by whichever shell `login_shell()` runs it through.
+        let prompt = "You're the assigned agent for to-do 'Fix login bug'";
+        let (plan, _, _) = plan(Some(prompt), &[], None);
+        let tokens = split_command(&plan.command);
+        assert_eq!(tokens, vec!["claude", prompt]);
     }
 
     #[test]
     fn command_override_replaces_the_binary() {
         let (plan, _, _) = plan_with_override(None, &[], Some("/opt/bin/claude"), None);
-        let tokens = shlex::split(&plan.command).expect("valid shell line");
+        let tokens = split_command(&plan.command);
         assert_eq!(tokens, vec!["/opt/bin/claude"]);
     }
 
@@ -352,7 +371,7 @@ mod tests {
             })
         );
 
-        let tokens = shlex::split(&plan.command).expect("valid shell line");
+        let tokens = split_command(&plan.command);
         assert_eq!(
             tokens,
             vec![

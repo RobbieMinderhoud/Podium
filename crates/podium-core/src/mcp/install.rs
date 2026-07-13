@@ -7,20 +7,14 @@
 //! only exit statuses are inspected — so nothing the CLI prints can leak
 //! into logs or errors.
 
-use std::borrow::Cow;
 use std::path::Path;
 
 use crate::error::{CoreError, CoreResult};
+use crate::platform::quote_arg as quote;
 use crate::platform::run_shell_ok as login_shell_ok;
 
 /// The server name Podium registers under in external clients.
 pub const SERVER_NAME: &str = "podium";
-
-fn quote(arg: &str) -> CoreResult<String> {
-    shlex::try_quote(arg)
-        .map(Cow::into_owned)
-        .map_err(|e| CoreError::InvalidInput(format!("cannot quote argument: {e}")))
-}
 
 /// Registration state of Podium's bridge in the Claude Code CLI.
 #[derive(Debug, Clone, Copy)]
@@ -82,6 +76,7 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
     #[test]
     fn add_command_quotes_paths_with_spaces() {
         let cmd =
@@ -89,5 +84,14 @@ mod tests {
         let tokens = shlex::split(&cmd).expect("valid shell line");
         assert!(tokens.contains(&"/Applications/My Podium.app/MacOS/Podium".to_string()));
         assert_eq!(tokens.last().unwrap(), "mcp-bridge");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn add_command_quotes_paths_with_spaces() {
+        let cmd =
+            claude_add_command(&PathBuf::from(r"C:\Program Files\Podium\podium.exe")).unwrap();
+        assert!(cmd.contains(r#""C:\Program Files\Podium\podium.exe""#));
+        assert!(cmd.ends_with("mcp-bridge"));
     }
 }

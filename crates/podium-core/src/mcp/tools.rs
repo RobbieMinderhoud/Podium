@@ -1,4 +1,4 @@
-//! The 15 MCP tools Podium exposes to agents — all thin calls into
+//! The 16 MCP tools Podium exposes to agents — all thin calls into
 //! [`Orchestrator`], returning JSON (or plain text for output tails).
 
 use std::str::FromStr;

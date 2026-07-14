@@ -1591,7 +1591,10 @@ mod tests {
 
     #[test]
     fn name_from_prompt_takes_first_line_and_truncates_on_word_boundary() {
-        assert_eq!(name_from_prompt("fix the bug").as_deref(), Some("fix the bug"));
+        assert_eq!(
+            name_from_prompt("fix the bug").as_deref(),
+            Some("fix the bug")
+        );
         // Leading blank lines skipped; first real line used.
         assert_eq!(
             name_from_prompt("\n  \nrename sessions").as_deref(),

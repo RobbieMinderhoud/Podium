@@ -2,10 +2,10 @@
  * App settings dialog with three tabs: General (appearance, terminal), Agents
  * (per-adapter command override + default arguments, plus the argument merge
  * mode), and MCP (one-click registration of the stdio bridge with external
- * clients like Claude Code).
+ * clients like Claude Code and Auggie).
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Modal } from "./Modal";
 import { useThemeStore, type ThemeMode } from "../state/themeStore";
@@ -26,6 +26,7 @@ import type {
   MergeMode,
 } from "../ipc/types";
 import { toastSuccess, toastError } from "../state/toastStore";
+import { playNotifySound } from "../lib/notify";
 import { AddIcon, CheckIcon, CopyIcon, MinusIcon } from "./icons";
 import styles from "./SettingsModal.module.css";
 
@@ -167,8 +168,8 @@ function McpClientCard({
         </div>
       </div>
       <small className={styles.rowHelp}>
-        Check with <code>claude mcp list</code>. If a stale <code>podium</code>{" "}
-        entry exists, Run replaces it automatically.
+        Check with <code>{client.checkCommand}</code>. If a stale{" "}
+        <code>podium</code> entry exists, Run replaces it automatically.
       </small>
     </div>
   );
@@ -502,6 +503,85 @@ function AgentEditForm({
   );
 }
 
+/** Max size for a custom notification sound (kept small — it lives in localStorage). */
+const MAX_SOUND_BYTES = 1024 * 1024;
+
+/** Notifications section: sound toggle + optional custom sound file. */
+function NotificationsSettings() {
+  const settings = useSettingsStore();
+  const { sound, soundName } = settings.notifications;
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const onPick = (file: File) => {
+    if (file.size > MAX_SOUND_BYTES) {
+      toastError("Sound too large", "Pick an audio file under 1 MB.");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      settings.set("notifications", {
+        soundDataUrl: String(reader.result),
+        soundName: file.name,
+      });
+      toastSuccess(`Notification sound set: ${file.name}`);
+    };
+    reader.onerror = () => toastError("Could not read the sound file");
+    reader.readAsDataURL(file);
+  };
+
+  return (
+    <section className={styles.section}>
+      <h3 className={styles.sectionLabel}>Notifications</h3>
+      <SettingToggle
+        label="Play sound"
+        help="Play a sound when an agent needs your input."
+        value={sound}
+        onChange={(v) => settings.set("notifications", { sound: v })}
+      />
+      <div className={styles.row}>
+        <span className={styles.rowLabel}>
+          Custom sound
+          <small className={styles.rowHelp}>
+            {soundName ? soundName : "Built-in beep. Choose your own (< 1 MB)."}
+          </small>
+        </span>
+        <div className={styles.clientActions}>
+          <input
+            ref={fileInput}
+            type="file"
+            accept="audio/*"
+            hidden
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) onPick(file);
+              e.target.value = ""; // allow re-picking the same file
+            }}
+          />
+          <button type="button" onClick={() => playNotifySound()}>
+            Test
+          </button>
+          <button type="button" onClick={() => fileInput.current?.click()}>
+            Choose…
+          </button>
+          {soundName && (
+            <button
+              type="button"
+              onClick={() =>
+                settings.set("notifications", {
+                  soundDataUrl: "",
+                  soundName: "",
+                })
+              }
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function GeneralTab() {
   const mode = useThemeStore((s) => s.mode);
   const setTheme = useThemeStore((s) => s.setTheme);
@@ -599,6 +679,8 @@ function GeneralTab() {
           </small>
         </div>
       </section>
+
+      <NotificationsSettings />
     </>
   );
 }

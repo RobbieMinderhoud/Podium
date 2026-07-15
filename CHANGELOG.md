@@ -8,6 +8,58 @@ Internal refactors, tooling, and chores are intentionally omitted. (Automated
 changelog generation from Conventional Commits via git-cliff is planned but not
 yet set up.)
 
+## [1.1.3] - 2026-07-14
+
+### Added
+
+- **Standalone agents are now named after their prompt.** An agent spawned
+  without an explicit name (and not tied to a to-do) takes a short label from
+  the first line of its launch prompt instead of the generic adapter name, so
+  sessions are recognisable in the sidebar right away. The agent can still
+  rename itself later.
+
+### Fixed
+
+- **Agent terminals no longer clip their bottom line.** The grid now sheds any
+  rows that don't actually fit the panel (a fractional cell height made the
+  fit over-count and push the last line under the edge), and the terminal keeps
+  a deeper bottom gutter — so Claude Code's status line stays fully visible.
+- **The "agent needs input" notification pings once, not repeatedly.** A
+  waiting agent alerts a single time while you're not looking at it, and only
+  re-arms once you view that agent again — a live prompt's redraw no longer
+  fires a fresh ping every couple of seconds, and the window you're already
+  watching never pings.
+
+## [1.1.2] - 2026-07-14
+
+### Fixed
+
+- **Agent terminals no longer clip the last column on the right.** Text now
+  keeps a right-hand gutter matching the left, so the final characters of each
+  line stay fully visible instead of running under the panel edge (or behind a
+  macOS overlay scrollbar).
+
+## [1.1.1] - 2026-07-14
+
+### Added
+
+- **Auggie can now be registered as an MCP client in one click.** Settings →
+  MCP shows an Auggie card alongside Claude Code, so agents running in Auggie
+  can use Podium's MCP tools (list processes, read output, spawn sibling
+  agents). Press Run — or copy the shown `auggie mcp add …` command — to
+  register Podium; the card reflects whether Auggie's CLI is installed and
+  whether Podium is already registered.
+
+## [1.1.0] - 2026-07-13
+
+### Added
+
+- **Notifications now play a sound.** When an agent needs your input, Podium
+  plays a sound alongside the OS notification and toast — a built-in beep by
+  default, or a custom audio file you pick. A new Settings → General →
+  Notifications section adds a Play sound toggle, a Choose…/Reset custom-sound
+  picker, and a Test button.
+
 ## [1.0.0] - 2026-07-07
 
 ### Added

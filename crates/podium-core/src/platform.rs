@@ -53,6 +53,25 @@ pub fn run_shell_ok(cmd: &str) -> bool {
         .unwrap_or(false)
 }
 
+/// Run `cmd` through the login shell, discarding stderr; returns its stdout
+/// when the command exits successfully, otherwise `None`. Used only where a
+/// command's non-secret stdout must be read (e.g. the Auggie installed-check's
+/// JSON listing), not just its exit status.
+pub fn run_shell_stdout(cmd: &str) -> Option<String> {
+    let (shell, prefix) = login_shell();
+    let output = std::process::Command::new(shell)
+        .args(prefix)
+        .arg(cmd)
+        .stdin(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .output()
+        .ok()?;
+    output
+        .status
+        .success()
+        .then(|| String::from_utf8_lossy(&output.stdout).into_owned())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

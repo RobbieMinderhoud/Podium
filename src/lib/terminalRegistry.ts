@@ -16,7 +16,6 @@
  */
 
 import { Terminal, type ITheme } from "@xterm/xterm";
-import { FitAddon } from "@xterm/addon-fit";
 
 import {
   processAttach,
@@ -36,7 +35,6 @@ export interface TerminalOptions {
 
 interface Entry {
   terminal: Terminal;
-  fit: FitAddon;
   nextSeq: number;
   /** Bumped on every (re-)attach; stale channel callbacks check it. */
   generation: number;
@@ -113,13 +111,10 @@ export function acquireTerminal(
     scrollback: 10_000,
     theme: options.theme,
   });
-  const fit = new FitAddon();
-  terminal.loadAddon(fit);
   terminal.onData((data) => writeInput(processId, data));
 
   entries.set(processId, {
     terminal,
-    fit,
     nextSeq: 0,
     generation: 0,
     lastOutputAt: null,
@@ -194,13 +189,83 @@ export function attachToElement(
   }
 }
 
+/**
+ * The slice of xterm's private core we read for exact cell metrics — the same
+ * private surface FitAddon itself relies on (`_core._renderService`).
+ */
+interface XtermCoreInternals {
+  _renderService: {
+    clear(): void;
+    dimensions: { device: { cell: { width: number; height: number } } };
+  };
+  viewport?: { scrollBarWidth: number };
+}
+
+/**
+ * Terminal grid for an available CSS content box, from the renderer's
+ * device-pixel cell size. xterm's FitAddon divides by `css.cell.*` instead —
+ * a rounded canvas size divided by the *current* grid — so its proposal
+ * flip-flops between N and N±1 depending on the grid it starts from, and
+ * every fit churned the grid through resize-up/shed-down (scrambling
+ * full-screen TUIs whose PTY size never changed). Device cell sizes are whole
+ * pixels and grid-independent, so this proposal is stable: refitting an
+ * unchanged host is a no-op. `null` when host or renderer isn't measurable
+ * (yet). Minimums (2 cols / 1 row) match FitAddon's.
+ */
+export function proposeGrid(
+  availWidth: number,
+  availHeight: number,
+  cell: { width: number; height: number },
+  dpr: number,
+): { cols: number; rows: number } | null {
+  if (
+    !(availWidth > 0) ||
+    !(availHeight > 0) ||
+    !(cell.width > 0) ||
+    !(cell.height > 0) ||
+    !(dpr > 0)
+  ) {
+    return null;
+  }
+  return {
+    cols: Math.max(2, Math.floor((availWidth * dpr) / cell.width)),
+    rows: Math.max(1, Math.floor((availHeight * dpr) / cell.height)),
+  };
+}
+
 /** Refit to the container and propagate the new grid size to the PTY. */
 export function fitTerminal(processId: ProcessId): void {
   const entry = entries.get(processId);
-  if (!entry?.terminal.element) return;
-  entry.fit.fit();
-  const { cols, rows } = entry.terminal;
-  processResize(processId, cols, rows).catch(() => {
+  const host = entry?.terminal.element?.parentElement;
+  if (!entry || !host) return;
+
+  const core = (entry.terminal as unknown as { _core: XtermCoreInternals })
+    ._core;
+  const cell = core._renderService.dimensions.device.cell;
+  const cs = getComputedStyle(host);
+  const availWidth =
+    host.clientWidth -
+    parseFloat(cs.paddingLeft) -
+    parseFloat(cs.paddingRight) -
+    (core.viewport?.scrollBarWidth ?? 0);
+  const availHeight =
+    host.clientHeight -
+    parseFloat(cs.paddingTop) -
+    parseFloat(cs.paddingBottom);
+  const grid = proposeGrid(
+    availWidth,
+    availHeight,
+    cell,
+    window.devicePixelRatio || 1,
+  );
+  if (!grid) return;
+
+  if (grid.cols !== entry.terminal.cols || grid.rows !== entry.terminal.rows) {
+    // Same clear-then-resize FitAddon does, for a clean full render.
+    core._renderService.clear();
+    entry.terminal.resize(grid.cols, grid.rows);
+  }
+  processResize(processId, grid.cols, grid.rows).catch(() => {
     // Expected while the process is not running; the PTY is resized on the
     // next successful fit after a start.
   });
@@ -226,6 +291,6 @@ export function applyThemeToTerminals(theme: ITheme): void {
 export function applyFontSizeToTerminals(fontSize: number): void {
   for (const [processId, entry] of entries) {
     entry.terminal.options.fontSize = fontSize;
-    if (entry.terminal.element) fitTerminal(processId);
+    fitTerminal(processId); // no-op for terminals not currently mounted
   }
 }

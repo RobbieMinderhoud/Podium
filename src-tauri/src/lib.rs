@@ -212,6 +212,7 @@ pub fn run() {
             commands::scratchpad::scratchpad_add_tag,
             commands::scratchpad::scratchpad_remove_tag,
             commands::scratchpad::scratchpad_set_archived,
+            commands::scratchpad::scratchpad_unassign,
             commands::window::window_confirm_close,
         ])
         .build(tauri::generate_context!())

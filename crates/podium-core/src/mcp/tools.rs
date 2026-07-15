@@ -141,6 +141,15 @@ pub struct SpawnAgentParams {
     /// combined task. Seeds the prompt with each to-do plus the standing
     /// instructions to keep them current over MCP.
     pub todo_ids: Option<Vec<String>>,
+    /// Scratchpad UUID to work on; seeds the agent's prompt with the
+    /// scratchpad and instructions to keep it current over MCP. Only used
+    /// when no to-do is given. Prefer `scratchpad_ids` for one or more
+    /// scratchpads; this single-id field is kept for compatibility and is
+    /// merged with `scratchpad_ids` (deduplicated).
+    pub scratchpad_id: Option<String>,
+    /// Scratchpad UUIDs to work on; several are handed to the one agent as a
+    /// single combined task. Only used when no to-do is given.
+    pub scratchpad_ids: Option<Vec<String>>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -256,14 +265,14 @@ impl PodiumTools {
     }
 
     #[tool(
-        description = "Spawn a new AI coding agent in a project (max 8 running agents per project). Pass todo_ids (or the single todo_id) to have it work on one or more to-dos and keep them updated; several to-dos are handed over as one combined task. Returns the new process snapshot."
+        description = "Spawn a new AI coding agent in a project (max 8 running agents per project). Pass todo_ids (or the single todo_id) to have it work on one or more to-dos and keep them updated; several to-dos are handed over as one combined task. Pass scratchpad_ids (or the single scratchpad_id) to have it work on one or more scratchpads instead (ignored if a to-do is also given). Returns the new process snapshot."
     )]
     pub async fn spawn_agent(
         &self,
         Parameters(p): Parameters<SpawnAgentParams>,
     ) -> Result<CallToolResult, McpError> {
         let project_id = parse_project_id(&p.project_id)?;
-        // Merge the single-id compatibility field with `todo_ids`, preserving
+        // Merge each single-id compatibility field with its plural, preserving
         // order and dropping duplicates.
         let mut todo_ids = Vec::new();
         for raw in p.todo_id.iter().chain(p.todo_ids.iter().flatten()) {
@@ -272,9 +281,27 @@ impl PodiumTools {
                 todo_ids.push(id);
             }
         }
+        let mut scratchpad_ids = Vec::new();
+        for raw in p
+            .scratchpad_id
+            .iter()
+            .chain(p.scratchpad_ids.iter().flatten())
+        {
+            let id = parse_scratchpad_id(raw)?;
+            if !scratchpad_ids.contains(&id) {
+                scratchpad_ids.push(id);
+            }
+        }
         let id = self
             .orchestrator
-            .spawn_agent(project_id, p.adapter_id, p.name, p.prompt, todo_ids)
+            .spawn_agent(
+                project_id,
+                p.adapter_id,
+                p.name,
+                p.prompt,
+                todo_ids,
+                scratchpad_ids,
+            )
             .await
             .map_err(core_error)?;
         json_result(&self.find_process(id)?)

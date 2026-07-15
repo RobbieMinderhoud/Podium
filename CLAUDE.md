@@ -221,7 +221,7 @@ maps camelCase JS argument keys to the snake_case Rust parameters.
 | `process_resize`        | `{ processId, cols, rows }`                 | –                 |
 | `process_attach`        | `{ processId, channel: Channel<TermEvent> }`| –                 |
 | `adapters_list`         | –                                           | `AdapterInfo[]`   |
-| `agent_spawn`           | `{ projectId, adapterId?, name?, prompt? }` | `ProcessInfo`     |
+| `agent_spawn`           | `{ projectId, adapterId?, name?, prompt?, todoIds?, scratchpadIds? }` | `ProcessInfo` |
 | `agent_settings_get`    | –                                           | `AgentSettingsDto` |
 | `agent_settings_set_adapter` | `{ adapterId, command?, defaultArgs }` | `AgentSettingsDto` |
 | `agent_settings_set_default_adapter` | `{ adapterId? }` (blank clears) | `AgentSettingsDto` |
@@ -250,6 +250,7 @@ maps camelCase JS argument keys to the snake_case Rust parameters.
 | `scratchpad_add_tag`    | `{ projectId, id, tag }`                    | `ScratchpadInfo`  |
 | `scratchpad_remove_tag` | `{ projectId, id, tag }`                    | `ScratchpadInfo`  |
 | `scratchpad_set_archived` | `{ projectId, id, archived }`             | `ScratchpadInfo`  |
+| `scratchpad_unassign`   | `{ projectId, id }`                         | `ScratchpadInfo`  |
 
 > ⚠️ **Breaking change (Phase 4):** `scratchpad_update_content` and
 > `scratchpad_update_title` — plus the matching `Orchestrator` methods

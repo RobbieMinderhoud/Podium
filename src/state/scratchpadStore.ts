@@ -23,6 +23,7 @@ import {
   scratchpadListArchived,
   scratchpadRemoveTag,
   scratchpadSetArchived,
+  scratchpadUnassign,
   scratchpadUpdateContent,
   scratchpadUpdateTitle,
   toIpcError,
@@ -87,6 +88,12 @@ interface ScratchpadState {
     id: ScratchpadId,
     archived: boolean,
   ) => Promise<ScratchpadInfo | null>;
+  /**
+   * Unassign a scratchpad from its agent (sends a best-effort cancel request
+   * to the agent first, server-side). Applies the returned snapshot eagerly;
+   * the `scratchpad:changed` refresh reconciles.
+   */
+  unassignScratchpad: (projectId: ProjectId, id: ScratchpadId) => Promise<void>;
   /** Event applier for `project:closed` — drops the cached lists. */
   dropProject: (projectId: ProjectId) => void;
 }
@@ -259,6 +266,22 @@ export const useScratchpadStore = create<ScratchpadState>((set) => ({
         toIpcError(e).message,
       );
       return null;
+    }
+  },
+
+  unassignScratchpad: async (projectId, id) => {
+    try {
+      const info = await scratchpadUnassign(projectId, id);
+      set((s) => ({
+        scratchpadsByProject: {
+          ...s.scratchpadsByProject,
+          [projectId]: (s.scratchpadsByProject[projectId] ?? []).map((sp) =>
+            sp.id === id ? info : sp,
+          ),
+        },
+      }));
+    } catch (e) {
+      toastError("Could not unassign scratchpad", toIpcError(e).message);
     }
   },
 

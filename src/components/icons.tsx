@@ -37,6 +37,8 @@ import {
   SquareTerminal,
   Strikethrough,
   Table2,
+  Columns3,
+  Rows3,
   Play,
   Square,
   RotateCw,
@@ -122,6 +124,8 @@ export const BlockquoteIcon = icon(Quote, { size: 15 });
 export const CodeBlockIcon = icon(Code2, { size: 15 });
 export const HorizontalRuleIcon = icon(Minus, { size: 15 });
 export const TableIcon = icon(Table2, { size: 15 });
+export const AddRowIcon = icon(Rows3, { size: 15 });
+export const AddColumnIcon = icon(Columns3, { size: 15 });
 export const ExpandIcon = icon(Maximize2, { size: 14 });
 export const CollapseIcon = icon(Minimize2, { size: 14 });
 

@@ -11,6 +11,8 @@ import type { Editor } from "@tiptap/react";
 import { useEffect, useState } from "react";
 
 import {
+  AddColumnIcon,
+  AddRowIcon,
   BlockquoteIcon,
   BoldIcon,
   BulletListIcon,
@@ -33,6 +35,8 @@ interface ToolbarAction {
   Icon: typeof BoldIcon;
   isActive: (editor: Editor) => boolean;
   run: (editor: Editor) => void;
+  /** Only meaningful while inside a table (add row/column) — hidden otherwise. */
+  isEnabled?: (editor: Editor) => boolean;
 }
 
 const ACTIONS: ToolbarAction[] = [
@@ -140,6 +144,25 @@ const ACTIONS: ToolbarAction[] = [
             .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
             .run(),
   },
+  {
+    // Pressing Tab in the last cell already adds a row (built into
+    // @tiptap/extension-table's default keymap) — this button is for
+    // inserting one anywhere else, or for people who don't know the
+    // shortcut. Only shown while inside a table; there's no "active" state
+    // for it (it's an action, not a toggle).
+    label: "Add row below",
+    Icon: AddRowIcon,
+    isActive: () => false,
+    isEnabled: (e) => e.isActive("table"),
+    run: (e) => e.chain().focus().addRowAfter().run(),
+  },
+  {
+    label: "Add column right",
+    Icon: AddColumnIcon,
+    isActive: () => false,
+    isEnabled: (e) => e.isActive("table"),
+    run: (e) => e.chain().focus().addColumnAfter().run(),
+  },
 ];
 
 /** Re-render on every editor transaction so active-state buttons stay in sync. */
@@ -162,20 +185,22 @@ export function ScratchpadToolbar({ editor }: { editor: Editor | null }) {
 
   return (
     <div className={styles.toolbar} role="toolbar" aria-label="Formatting">
-      {ACTIONS.map(({ label, Icon, isActive, run }) => (
-        <button
-          key={label}
-          type="button"
-          className={styles.button}
-          aria-label={label}
-          aria-pressed={editor ? isActive(editor) : false}
-          data-active={editor ? isActive(editor) : false}
-          disabled={!editor}
-          onClick={() => editor && run(editor)}
-        >
-          <Icon />
-        </button>
-      ))}
+      {ACTIONS.filter(({ isEnabled }) => !editor || !isEnabled || isEnabled(editor)).map(
+        ({ label, Icon, isActive, run }) => (
+          <button
+            key={label}
+            type="button"
+            className={styles.button}
+            aria-label={label}
+            aria-pressed={editor ? isActive(editor) : false}
+            data-active={editor ? isActive(editor) : false}
+            disabled={!editor}
+            onClick={() => editor && run(editor)}
+          >
+            <Icon />
+          </button>
+        ),
+      )}
     </div>
   );
 }

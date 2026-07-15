@@ -37,6 +37,8 @@ function mockEditor(
     unsetLink: vi.fn(() => chainable),
     insertTable: vi.fn(() => chainable),
     deleteTable: vi.fn(() => chainable),
+    addRowAfter: vi.fn(() => chainable),
+    addColumnAfter: vi.fn(() => chainable),
     run: vi.fn(() => true),
   };
   Object.assign(commandSpy, chainable);
@@ -182,6 +184,27 @@ describe("ScratchpadToolbar", () => {
 
     expect(chain.mock.results[0].value.deleteTable).toHaveBeenCalled();
     expect(chain.mock.results[0].value.insertTable).not.toHaveBeenCalled();
+  });
+
+  it("hides the add-row/add-column buttons outside a table", () => {
+    const { editor } = mockEditor();
+    render(<ScratchpadToolbar editor={editor} />);
+
+    expect(screen.queryByLabelText("Add row below")).toBeNull();
+    expect(screen.queryByLabelText("Add column right")).toBeNull();
+  });
+
+  it("shows and wires the add-row/add-column buttons inside a table", () => {
+    const { editor, chain } = mockEditor({
+      isActive: (name: unknown) => name === "table",
+    });
+    render(<ScratchpadToolbar editor={editor} />);
+
+    fireEvent.click(screen.getByLabelText("Add row below"));
+    expect(chain.mock.results[0].value.addRowAfter).toHaveBeenCalled();
+
+    fireEvent.click(screen.getByLabelText("Add column right"));
+    expect(chain.mock.results[1].value.addColumnAfter).toHaveBeenCalled();
   });
 
   it("reflects active state at the cursor position", () => {

@@ -10,7 +10,9 @@ use tokio::sync::broadcast;
 
 use crate::error::{CoreError, CoreResult};
 use crate::process::scrollback::ScrollbackBuffer;
-use crate::process::{ProcessKind, ProcessSpec};
+#[cfg(windows)]
+use crate::process::ProcessKind;
+use crate::process::ProcessSpec;
 
 const LOCK_POISONED: &str = "pty lock poisoned";
 #[cfg(unix)]

@@ -56,6 +56,12 @@ export function ScratchpadEditor({
         // instead of becoming a real heading) — paste doesn't go through
         // Tiptap's typing input rules, only `transformPastedText` does.
         transformPastedText: true,
+        // Symmetric with the above: without this, copying rich content out
+        // of the editor puts plain text on the clipboard (bold/headings/etc.
+        // silently stripped) instead of the markdown source — surprising
+        // since the persisted value *is* markdown and paste already
+        // round-trips it.
+        transformCopiedText: true,
       }),
     ],
     content,

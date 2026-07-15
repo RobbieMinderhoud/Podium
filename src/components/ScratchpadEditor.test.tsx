@@ -247,4 +247,25 @@ describe("ScratchpadEditor", () => {
       expect(html).not.toContain("## Section 3");
     });
   });
+
+  describe("copying", () => {
+    it("puts markdown, not plain text, on the clipboard", async () => {
+      const onEditorReady = vi.fn();
+      render(
+        <ScratchpadEditor
+          content="# Title\n\n**bold** text"
+          onChange={vi.fn()}
+          onEditorReady={onEditorReady}
+        />,
+      );
+      const editor = await waitForEditor(onEditorReady);
+
+      const { view } = editor;
+      const slice = view.state.doc.slice(0, view.state.doc.content.size);
+      const { text } = view.serializeForClipboard(slice);
+
+      expect(text).toContain("# Title");
+      expect(text).toContain("**bold**");
+    });
+  });
 });

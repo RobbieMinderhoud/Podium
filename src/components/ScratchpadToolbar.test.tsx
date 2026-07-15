@@ -35,6 +35,8 @@ function mockEditor(
     extendMarkRange: vi.fn(() => chainable),
     setLink: vi.fn(() => chainable),
     unsetLink: vi.fn(() => chainable),
+    insertTable: vi.fn(() => chainable),
+    deleteTable: vi.fn(() => chainable),
     run: vi.fn(() => true),
   };
   Object.assign(commandSpy, chainable);
@@ -154,6 +156,32 @@ describe("ScratchpadToolbar", () => {
 
     fireEvent.click(screen.getByLabelText("Horizontal rule"));
     expect(chain.mock.results[2].value.setHorizontalRule).toHaveBeenCalled();
+  });
+
+  it("inserts a 3x3 table with a header row when not in a table", () => {
+    const { editor, chain } = mockEditor();
+    render(<ScratchpadToolbar editor={editor} />);
+
+    fireEvent.click(screen.getByLabelText("Table"));
+
+    expect(chain.mock.results[0].value.insertTable).toHaveBeenCalledWith({
+      rows: 3,
+      cols: 3,
+      withHeaderRow: true,
+    });
+    expect(chain.mock.results[0].value.deleteTable).not.toHaveBeenCalled();
+  });
+
+  it("deletes the surrounding table when the cursor is already in one", () => {
+    const { editor, chain } = mockEditor({
+      isActive: (name: unknown) => name === "table",
+    });
+    render(<ScratchpadToolbar editor={editor} />);
+
+    fireEvent.click(screen.getByLabelText("Table"));
+
+    expect(chain.mock.results[0].value.deleteTable).toHaveBeenCalled();
+    expect(chain.mock.results[0].value.insertTable).not.toHaveBeenCalled();
   });
 
   it("reflects active state at the cursor position", () => {

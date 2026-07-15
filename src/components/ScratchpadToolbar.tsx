@@ -24,6 +24,7 @@ import {
   LinkFormatIcon,
   OrderedListIcon,
   StrikethroughIcon,
+  TableIcon,
 } from "./icons";
 import styles from "./ScratchpadToolbar.module.css";
 
@@ -121,6 +122,23 @@ const ACTIONS: ToolbarAction[] = [
     Icon: HorizontalRuleIcon,
     isActive: () => false,
     run: (e) => e.chain().focus().setHorizontalRule().run(),
+  },
+  {
+    label: "Table",
+    Icon: TableIcon,
+    isActive: (e) => e.isActive("table"),
+    // Toggle: insert a starter 3x3 table when the cursor isn't in one
+    // already, delete the surrounding table when it is — cell-by-cell
+    // editing (add/remove row/column) isn't toolbar-driven, matching the
+    // rest of the toolbar's "one button per block type" scope.
+    run: (e) =>
+      e.isActive("table")
+        ? e.chain().focus().deleteTable().run()
+        : e
+            .chain()
+            .focus()
+            .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+            .run(),
   },
 ];
 

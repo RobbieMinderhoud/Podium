@@ -22,6 +22,7 @@
     "@tiptap/core": "^3.27.4",
     "@tiptap/extension-link": "^3.27.4",
     "@tiptap/extension-placeholder": "^3.27.4",
+    "@tiptap/extension-table": "^3.27.4",
     "@tiptap/extension-task-item": "^3.27.4",
     "@tiptap/extension-task-list": "^3.27.4",
     "@tiptap/pm": "^3.27.4",

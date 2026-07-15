@@ -6,9 +6,12 @@
  * `prosemirror-markdown` bridge) so the editor's `content` option accepts a
  * markdown string directly and `editor.storage.markdown.getMarkdown()`
  * serializes the current doc back to markdown; StarterKit + explicit task
- * list/item, link, and placeholder extensions cover every formatting action
- * in the toolbar (StarterKit alone lacks checklists, links in some
- * versions, and the empty-state placeholder).
+ * list/item, table, link, and placeholder extensions cover every formatting
+ * action in the toolbar (StarterKit alone lacks checklists, tables, links in
+ * some versions, and the empty-state placeholder). `tiptap-markdown` has
+ * first-class GFM table serialization built in (it's tested against these
+ * same `@tiptap/extension-table*` packages upstream), so tables round-trip
+ * to/from markdown with no extra configuration beyond registering them.
  *
  * `ScratchpadEditor` owns the `useEditor` instance internally (so callers
  * only ever deal in markdown strings) but hands the live `Editor` instance
@@ -18,6 +21,7 @@
 
 import Link from "@tiptap/extension-link";
 import Placeholder from "@tiptap/extension-placeholder";
+import { TableKit } from "@tiptap/extension-table";
 import TaskItem from "@tiptap/extension-task-item";
 import TaskList from "@tiptap/extension-task-list";
 import { type Editor, EditorContent, useEditor } from "@tiptap/react";
@@ -43,6 +47,7 @@ export function ScratchpadEditor({
       Link.configure({ openOnClick: false, autolink: true }),
       TaskList,
       TaskItem.configure({ nested: true }),
+      TableKit.configure({ table: { resizable: true } }),
       Placeholder.configure({ placeholder: SCRATCHPAD_PLACEHOLDER }),
       Markdown.configure({
         tightLists: true,

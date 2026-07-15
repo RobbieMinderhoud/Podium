@@ -198,6 +198,15 @@ describe("ScratchpadEditor", () => {
       const out = await roundTrip("[Podium](https://example.com)");
       expect(out).toContain("[Podium](https://example.com)");
     });
+
+    it("round-trips a table", async () => {
+      const table =
+        "| A | B |\n| --- | --- |\n| one | two |\n| three | four |";
+      const out = await roundTrip(table);
+      expect(out).toContain("| A | B |");
+      expect(out).toContain("| one | two |");
+      expect(out).toContain("| three | four |");
+    });
   });
 
   describe("pasting", () => {

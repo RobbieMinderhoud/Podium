@@ -59,9 +59,10 @@ describe("extractHeadings", () => {
     }
   });
 
-  it("ignores H1 (the document title, not part of the outline)", () => {
+  it("includes H1 (the document title) alongside H2/H3", () => {
     editor = makeEditor("# Title\n\n## Section");
     expect(extractHeadings(editor)).toEqual([
+      { level: 1, text: "Title", pos: expect.any(Number) },
       { level: 2, text: "Section", pos: expect.any(Number) },
     ]);
   });

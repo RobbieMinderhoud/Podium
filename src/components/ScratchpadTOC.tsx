@@ -1,8 +1,10 @@
 /**
  * "On this page" outline panel for a scratchpad: the current document's
- * H2/H3 headings, nested by level, in a scrollable side panel. Purely
- * presentational — `ScratchpadDetailPane` supplies the live `Heading[]` (see
- * `../lib/tiptapHeadings`) and a click handler that scrolls the editor.
+ * H1/H2/H3 headings, nested by level, in a scrollable side panel (H1 and H2
+ * render at the same unindented tier — see `Heading.level`'s doc comment).
+ * Purely presentational — `ScratchpadDetailPane` supplies the live
+ * `Heading[]` (see `../lib/tiptapHeadings`) and a click handler that scrolls
+ * the editor.
  */
 
 import type { Heading } from "../lib/tiptapHeadings";

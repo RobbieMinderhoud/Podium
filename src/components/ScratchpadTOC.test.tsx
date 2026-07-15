@@ -55,6 +55,23 @@ describe("ScratchpadTOC", () => {
     expect(screen.getAllByRole("listitem")).toHaveLength(40);
   });
 
+  it("renders H1 unindented, at the same level as H2", () => {
+    const withTitle: Heading[] = [
+      { level: 1, text: "Document Title", pos: 1 },
+      { level: 2, text: "First section", pos: 20 },
+    ];
+    render(<ScratchpadTOC headings={withTitle} onSelectHeading={vi.fn()} />);
+
+    const items = screen.getAllByRole("listitem");
+    expect(items.map((li) => li.getAttribute("data-level"))).toEqual([
+      "1",
+      "2",
+    ]);
+    // No indent rule targets data-level="1" (same as "2") in
+    // ScratchpadTOC.module.css — only "3" gets padding-left.
+    expect(items[0].className).toBe(items[1].className);
+  });
+
   it("calls onSelectHeading with the clicked heading", () => {
     const onSelectHeading = vi.fn();
     render(

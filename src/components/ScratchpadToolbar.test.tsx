@@ -117,17 +117,22 @@ describe("ScratchpadToolbar", () => {
     expect(chain.mock.results[0].value.unsetLink).toHaveBeenCalled();
   });
 
-  it("toggles heading 2 and heading 3", () => {
+  it("toggles heading 1, heading 2, and heading 3", () => {
     const { editor, chain } = mockEditor();
     render(<ScratchpadToolbar editor={editor} />);
 
-    fireEvent.click(screen.getByLabelText("Heading 2"));
+    fireEvent.click(screen.getByLabelText("Heading 1"));
     expect(chain.mock.results[0].value.toggleHeading).toHaveBeenCalledWith({
+      level: 1,
+    });
+
+    fireEvent.click(screen.getByLabelText("Heading 2"));
+    expect(chain.mock.results[1].value.toggleHeading).toHaveBeenCalledWith({
       level: 2,
     });
 
     fireEvent.click(screen.getByLabelText("Heading 3"));
-    expect(chain.mock.results[1].value.toggleHeading).toHaveBeenCalledWith({
+    expect(chain.mock.results[2].value.toggleHeading).toHaveBeenCalledWith({
       level: 3,
     });
   });

@@ -18,6 +18,7 @@ import {
   BulletListIcon,
   ChecklistIcon,
   CodeBlockIcon,
+  Heading1Icon,
   Heading2Icon,
   Heading3Icon,
   HorizontalRuleIcon,
@@ -78,6 +79,12 @@ const ACTIONS: ToolbarAction[] = [
       }
       e.chain().focus().extendMarkRange("link").setLink({ href: url }).run();
     },
+  },
+  {
+    label: "Heading 1",
+    Icon: Heading1Icon,
+    isActive: (e) => e.isActive("heading", { level: 1 }),
+    run: (e) => e.chain().focus().toggleHeading({ level: 1 }).run(),
   },
   {
     label: "Heading 2",

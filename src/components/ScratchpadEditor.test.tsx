@@ -158,8 +158,9 @@ describe("ScratchpadEditor", () => {
       expect(out).toContain("~~struck~~");
     });
 
-    it("round-trips headings", async () => {
-      const out = await roundTrip("## H2\n\n### H3");
+    it("round-trips headings, including H1", async () => {
+      const out = await roundTrip("# H1\n\n## H2\n\n### H3");
+      expect(out).toContain("# H1");
       expect(out).toContain("## H2");
       expect(out).toContain("### H3");
     });

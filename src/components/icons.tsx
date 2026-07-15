@@ -20,6 +20,7 @@ import {
   Bot,
   Code,
   Code2,
+  Heading1,
   Heading2,
   Heading3,
   Italic,
@@ -115,6 +116,7 @@ export const ItalicIcon = icon(Italic, { size: 15 });
 export const StrikethroughIcon = icon(Strikethrough, { size: 15 });
 export const InlineCodeIcon = icon(Code, { size: 15 });
 export const LinkFormatIcon = icon(Link2, { size: 15 });
+export const Heading1Icon = icon(Heading1, { size: 15 });
 export const Heading2Icon = icon(Heading2, { size: 15 });
 export const Heading3Icon = icon(Heading3, { size: 15 });
 export const BulletListIcon = icon(List, { size: 15 });

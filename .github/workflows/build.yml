@@ -2,13 +2,16 @@ name: Build
 
 # Build installable desktop bundles.
 # - workflow_dispatch: build on demand from the Actions tab.
-# - push of a v* tag: a release tag also produces the artifacts.
+# - push to main: every merge to main produces the artifact.
+# - push of a v* tag: a release tag also produces the artifact.
 #
 # Matrix over macOS (.dmg) and Windows (NSIS .exe). Cross-compiling is painful,
 # so each OS builds natively on its own runner.
 on:
   workflow_dispatch:
   push:
+    branches:
+      - main
     tags:
       - "v*"
 

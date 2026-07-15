@@ -324,10 +324,6 @@ function ProjectGroup({
             onOpenTodo={onOpenTodo}
             onPickAgent={onPickAgent}
           />
-          <ScratchpadSubsection
-            projectId={project.id}
-            onOpenScratchpad={onOpenScratchpad}
-          />
           <Subsection
             title="Agents"
             Icon={AgentIcon}
@@ -350,6 +346,10 @@ function ProjectGroup({
             rows={terminals}
             empty="No terminals yet."
             add={{ label: "New terminal", onClick: () => void addTerminal() }}
+          />
+          <ScratchpadSubsection
+            projectId={project.id}
+            onOpenScratchpad={onOpenScratchpad}
           />
         </div>
       </div>

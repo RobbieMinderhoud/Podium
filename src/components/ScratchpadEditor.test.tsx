@@ -199,4 +199,42 @@ describe("ScratchpadEditor", () => {
       expect(out).toContain("[Podium](https://example.com)");
     });
   });
+
+  describe("pasting", () => {
+    it("parses a pasted heading as a real heading, not literal '##' text", async () => {
+      const onEditorReady = vi.fn();
+      render(
+        <ScratchpadEditor
+          content=""
+          onChange={vi.fn()}
+          onEditorReady={onEditorReady}
+        />,
+      );
+      const editor = await waitForEditor(onEditorReady);
+
+      act(() => {
+        // `view.pasteText` forces prosemirror's "paste as plain text" path
+        // (`preferPlain: true`), which is exactly the mode the markdown
+        // extension's `clipboardTextParser` skips (a user who explicitly
+        // asks to paste as plain text wants the literal text). A normal
+        // Cmd+V of plain-text-only clipboard data goes through
+        // prosemirror-view's real `paste` DOM handler instead, which only
+        // sets `preferPlain` from the shift-key state — so dispatch a real
+        // `paste` event with a `clipboardData`-like object exposing only
+        // `text/plain`, no `text/html`, to exercise that actual path.
+        const event = new Event("paste", { bubbles: true, cancelable: true });
+        Object.defineProperty(event, "clipboardData", {
+          value: {
+            getData: (type: string) =>
+              type === "text/plain" ? "## Section 3\n\nSome body text" : "",
+          },
+        });
+        editor.view.dom.dispatchEvent(event);
+      });
+
+      const html = editor.getHTML();
+      expect(html).toContain("<h2>Section 3</h2>");
+      expect(html).not.toContain("## Section 3");
+    });
+  });
 });

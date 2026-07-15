@@ -44,7 +44,14 @@ export function ScratchpadEditor({
       TaskList,
       TaskItem.configure({ nested: true }),
       Placeholder.configure({ placeholder: SCRATCHPAD_PLACEHOLDER }),
-      Markdown.configure({ tightLists: true }),
+      Markdown.configure({
+        tightLists: true,
+        // Without this, pasted text is inserted as a literal paragraph (a
+        // pasted "## Heading" shows up as the raw characters "## Heading"
+        // instead of becoming a real heading) — paste doesn't go through
+        // Tiptap's typing input rules, only `transformPastedText` does.
+        transformPastedText: true,
+      }),
     ],
     content,
     editorProps: {

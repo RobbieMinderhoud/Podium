@@ -25,6 +25,7 @@ import { useProcessStore } from "../state/processStore";
 import { useProjectStore } from "../state/projectStore";
 import { NewAgentModal } from "./NewAgentModal";
 import { ProcessRow } from "./ProcessRow";
+import { ScratchpadAgentModal } from "./ScratchpadAgentModal";
 import { ScratchpadSubsection } from "./ScratchpadSubsection";
 import { TodoSubsection } from "./TodoSubsection";
 import {
@@ -95,6 +96,16 @@ interface ProjectGroupProps {
     initialName: string,
   ) => void;
   onOpenScratchpad: (projectId: ProjectId, scratchpadId: ScratchpadId) => void;
+  /**
+   * Open the agent picker (Scratchpad agent modal) pre-filled for these
+   * scratchpad(s). Always used for spawning — scratchpads have no
+   * direct-spawn shortcut, unlike to-dos.
+   */
+  onPickScratchpadAgent: (
+    projectId: ProjectId,
+    scratchpadIds: ScratchpadId[],
+    initialName: string,
+  ) => void;
   /** Drag-to-reorder wiring, owned by the Sidebar (tracks the drop target). */
   dragging: boolean;
   dropTarget: boolean;
@@ -112,6 +123,7 @@ function ProjectGroup({
   onOpenTodo,
   onPickAgent,
   onOpenScratchpad,
+  onPickScratchpadAgent,
   dragging,
   dropTarget,
   onDragStart,
@@ -350,6 +362,7 @@ function ProjectGroup({
           <ScratchpadSubsection
             projectId={project.id}
             onOpenScratchpad={onOpenScratchpad}
+            onPickAgent={onPickScratchpadAgent}
           />
         </div>
       </div>
@@ -364,8 +377,17 @@ interface AgentModalTarget {
   initialName?: string;
 }
 
+/** What the Scratchpad agent modal is opened for. */
+interface ScratchpadAgentModalTarget {
+  projectId: ProjectId;
+  scratchpadIds: ScratchpadId[];
+  initialName?: string;
+}
+
 export function Sidebar() {
   const [agentModal, setAgentModal] = useState<AgentModalTarget | null>(null);
+  const [scratchpadAgentModal, setScratchpadAgentModal] =
+    useState<ScratchpadAgentModalTarget | null>(null);
   const sidebarWidth = useLayoutStore((s) => s.sidebarWidth);
   const openTodoInWorkArea = useLayoutStore((s) => s.openTodoInWorkArea);
   const openScratchpadInWorkArea = useLayoutStore(
@@ -425,6 +447,13 @@ export function Sidebar() {
                 setAgentModal({ projectId, todoIds, initialName })
               }
               onOpenScratchpad={openScratchpadInWorkArea}
+              onPickScratchpadAgent={(projectId, scratchpadIds, initialName) =>
+                setScratchpadAgentModal({
+                  projectId,
+                  scratchpadIds,
+                  initialName,
+                })
+              }
             />
           ))
         ) : (
@@ -451,6 +480,13 @@ export function Sidebar() {
         todoIds={agentModal?.todoIds}
         initialName={agentModal?.initialName}
         onClose={() => setAgentModal(null)}
+      />
+      <ScratchpadAgentModal
+        open={scratchpadAgentModal !== null}
+        projectId={scratchpadAgentModal?.projectId ?? null}
+        scratchpadIds={scratchpadAgentModal?.scratchpadIds ?? []}
+        initialName={scratchpadAgentModal?.initialName}
+        onClose={() => setScratchpadAgentModal(null)}
       />
     </aside>
   );

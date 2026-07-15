@@ -13,6 +13,7 @@ use std::sync::Mutex;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+use crate::assignment::AssignedAgent;
 use crate::error::{CoreError, CoreResult};
 use crate::ids::{ProjectId, ScratchpadId};
 
@@ -40,6 +41,9 @@ pub struct ScratchpadInfo {
     pub version: u32,
     /// Free-text tags, addable by the user and by agents over MCP.
     pub tags: Vec<String>,
+    /// The agent currently working on this scratchpad, if any. Runtime-only,
+    /// so it is `None` after a restart until an agent is (re)assigned.
+    pub assigned_agent: Option<AssignedAgent>,
 }
 
 /// One scratchpad as persisted on disk; the project association is the map
@@ -83,6 +87,9 @@ impl StoredScratchpad {
             updated_by: self.updated_by.clone(),
             version: self.version,
             tags: self.tags.clone(),
+            // Assignments live in the orchestrator (runtime-only); listing
+            // code enriches this after fetching from the store.
+            assigned_agent: None,
         }
     }
 }

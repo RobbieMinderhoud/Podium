@@ -44,7 +44,7 @@ extracted into a standalone template:
 
 - ✅ **`podium-core`**: the whole domain — project open/close + `podium.yml`
   config (strict serde, broken config still opens the project), PTY process
-  engine (spawn via `$SHELL -lc`, process groups, `killpg` SIGTERM→SIGKILL
+  engine (spawn via `$SHELL -lic`, process groups, `killpg` SIGTERM→SIGKILL
   stop), ring-buffer scrollback with per-chunk `seq`, supervision (exponential
   backoff + circuit breaker), agent adapters (Claude Code, Auggie), per-project
   to-dos (persisted, shared with agents), and the built-in MCP server (axum +
@@ -129,9 +129,11 @@ override (set via `project_rename`) and list position is the sidebar order
 load. `project_open` re-applies a stored name override so a renamed project
 comes back named after a restart.
 
-- **Processes** are shell command lines run via `$SHELL -lc` in their own
-  PTY + process group. Stop = SIGTERM to the group, SIGKILL after a grace
-  period. A user stop is never counted as a crash.
+- **Processes** are shell command lines run via `$SHELL -lic` (login +
+  interactive, so both `.zprofile`/`.bash_profile` and `.zshrc`/`.bashrc`
+  PATH/env edits are honoured) in their own PTY + process group. Stop =
+  SIGTERM to the group, SIGKILL after a grace period. A user stop is never
+  counted as a crash.
 - **Supervision** (`process/supervisor.rs`): `RestartPolicy` `never` /
   `on-crash` / `always`; exponential backoff 500ms → 30s (doubling), circuit
   breaker at 5 restarts per rolling 60s, backoff resets after 60s of stable
@@ -305,7 +307,7 @@ name: Webshop            # display name (default: folder name)
 icon_initials: WS        # sidebar badge, max 2 chars
 processes:
   - name: dev-server
-    command: pnpm dev    # run via $SHELL -lc
+    command: pnpm dev    # run via $SHELL -lic
     cwd: web             # relative to the project root
     auto_start: true
     auto_restart: on-crash   # never | on-crash | always

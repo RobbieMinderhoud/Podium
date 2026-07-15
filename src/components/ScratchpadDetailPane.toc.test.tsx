@@ -39,6 +39,7 @@ function scratchpad(overrides: Partial<ScratchpadInfo> = {}): ScratchpadInfo {
     updatedBy: "User",
     version: 1,
     tags: [],
+    assignedAgent: null,
     ...overrides,
   };
 }

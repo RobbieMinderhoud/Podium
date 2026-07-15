@@ -200,6 +200,7 @@ export function agentSpawn(
     name: options.name ?? null,
     prompt: options.prompt ?? null,
     todoIds: options.todoIds ?? null,
+    scratchpadIds: options.scratchpadIds ?? null,
   });
 }
 
@@ -471,6 +472,18 @@ export function scratchpadSetArchived(
   archived: boolean,
 ): Promise<ScratchpadInfo> {
   return invoke("scratchpad_set_archived", { projectId, id, archived });
+}
+
+/**
+ * Unassign a scratchpad from its agent (the sidebar (x) action). Sends a
+ * best-effort cancel/rollback request to the agent's stdin first, then clears
+ * the link. Returns the updated scratchpad.
+ */
+export function scratchpadUnassign(
+  projectId: ProjectId,
+  id: ScratchpadId,
+): Promise<ScratchpadInfo> {
+  return invoke("scratchpad_unassign", { projectId, id });
 }
 
 // ---------------------------------------------------------------------------

@@ -136,6 +136,11 @@ export interface AgentSpawnOptions {
    * to-dos are handed to the one agent as a single combined task.
    */
   todoIds?: TodoId[];
+  /**
+   * Scratchpads to work on; only used when `todoIds` is empty. Several
+   * scratchpads are handed to the one agent as a single combined task.
+   */
+  scratchpadIds?: ScratchpadId[];
 }
 
 /**
@@ -180,12 +185,13 @@ export type TermEvent =
   | { type: "lagged" };
 
 /**
- * The agent currently working on a to-do (`podium_core::AssignedAgent`).
- * Runtime-only on the Rust side (a process id is per-run), so it is `null`
- * after a restart until an agent is (re)assigned.
+ * The agent currently working on a to-do or scratchpad
+ * (`podium_core::AssignedAgent`). Runtime-only on the Rust side (a process id
+ * is per-run), so it is `null` after a restart until an agent is
+ * (re)assigned. Shared by `TodoInfo` and `ScratchpadInfo`.
  */
 export interface AssignedAgent {
-  /** The agent process working on the to-do. */
+  /** The agent process working on the item. */
   processId: ProcessId;
   /** The agent's display name, for showing without a process lookup. */
   name: string;
@@ -271,6 +277,8 @@ export interface ScratchpadInfo {
   version: number;
   /** Free-text tags, addable by the user and by agents over MCP. */
   tags: string[];
+  /** The agent currently working on this scratchpad, or `null` if unassigned. */
+  assignedAgent: AssignedAgent | null;
 }
 
 /** Structured error every IPC command can reject with (`IpcError`). */

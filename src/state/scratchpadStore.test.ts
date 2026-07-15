@@ -65,6 +65,7 @@ function scratchpad(
     updatedBy: "User",
     version: 1,
     tags: [],
+    assignedAgent: null,
     ...overrides,
   };
 }

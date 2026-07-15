@@ -63,6 +63,7 @@ function scratchpad(overrides: Partial<ScratchpadInfo> = {}): ScratchpadInfo {
     updatedBy: "User",
     version: 1,
     tags: [],
+    assignedAgent: null,
     ...overrides,
   };
 }
@@ -503,9 +504,9 @@ describe("ScratchpadDetailPane", () => {
     });
     expect(screen.getByRole("alert")).toBeInTheDocument();
     // The user's typed title stays visible while the banner is up.
-    expect((screen.getByLabelText("Scratchpad title") as HTMLInputElement).value).toBe(
-      "My title",
-    );
+    expect(
+      (screen.getByLabelText("Scratchpad title") as HTMLInputElement).value,
+    ).toBe("My title");
 
     fireEvent.click(screen.getByText("Force save"));
     await act(async () => {
@@ -524,9 +525,9 @@ describe("ScratchpadDetailPane", () => {
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
     // The user's title stays visible — Force Save must not have been
     // silently dropped in favor of the (never-conflicting) content path.
-    expect((screen.getByLabelText("Scratchpad title") as HTMLInputElement).value).toBe(
-      "My title",
-    );
+    expect(
+      (screen.getByLabelText("Scratchpad title") as HTMLInputElement).value,
+    ).toBe("My title");
   });
 
   it("typing through a pending conflict keeps re-detecting it instead of silently overwriting the concurrent edit", async () => {

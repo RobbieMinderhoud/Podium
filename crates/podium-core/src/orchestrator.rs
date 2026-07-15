@@ -346,9 +346,13 @@ impl Orchestrator {
                     }
                 }
             }
-            // The project (and its to-dos) is gone; drop any dangling
-            // assignments so the runtime map can't leak stale process ids.
+            // The project (and its to-dos/scratchpads) is gone; drop any
+            // dangling assignments so the runtime maps can't leak stale
+            // process ids.
             inner.todo_assignments.retain(|_, pid| !ids.contains(pid));
+            inner
+                .scratchpad_assignments
+                .retain(|_, pid| !ids.contains(pid));
             ids
         };
         for pid in removed {
@@ -1091,15 +1095,23 @@ impl Orchestrator {
                     .ok_or(CoreError::TodoNotFound)
             })
             .collect::<CoreResult<Vec<_>>>()?;
-        // Same for scratchpads. All must exist before we spawn anything.
-        let scratchpads: Vec<ScratchpadInfo> = scratchpad_ids
-            .iter()
-            .map(|id| {
-                self.scratchpads
-                    .get(project_id, &root, *id)
-                    .ok_or(CoreError::ScratchpadNotFound)
-            })
-            .collect::<CoreResult<Vec<_>>>()?;
+        // Same for scratchpads — but only when no to-dos were given: to-dos
+        // win, and scratchpad_ids is documented as ignored in that case, so
+        // an invalid/deleted scratchpad id must not fail (or a valid one
+        // spuriously get assigned) a to-do spawn. All must exist before we
+        // spawn anything.
+        let scratchpads: Vec<ScratchpadInfo> = if todos.is_empty() {
+            scratchpad_ids
+                .iter()
+                .map(|id| {
+                    self.scratchpads
+                        .get(project_id, &root, *id)
+                        .ok_or(CoreError::ScratchpadNotFound)
+                })
+                .collect::<CoreResult<Vec<_>>>()?
+        } else {
+            Vec::new()
+        };
         let base_prompt = prompt.as_deref().map(str::trim).filter(|p| !p.is_empty());
         let name = match name.as_deref().map(str::trim) {
             Some(n) if !n.is_empty() => n.to_string(),

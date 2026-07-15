@@ -979,6 +979,79 @@ async fn spawning_on_a_scratchpad_assigns_the_agent_and_unassign_clears_it() {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn spawning_on_both_todo_and_scratchpad_ignores_the_scratchpad() {
+    // to-dos win: when both are passed, the scratchpad is neither assigned
+    // nor resolved (its content never entered the prompt either).
+    let dir = tempfile::tempdir().expect("tempdir");
+    let orch =
+        Orchestrator::new().with_adapters(AdapterRegistry::new(vec![Arc::new(FakeAgentAdapter)]));
+    let project_id = orch
+        .open_project(dir.path().to_path_buf())
+        .await
+        .expect("open project");
+    let todo = orch
+        .add_todo(project_id, "wire up OAuth")
+        .expect("add todo");
+    let pad = orch
+        .add_scratchpad(project_id, "User")
+        .expect("add scratchpad");
+
+    let agent = orch
+        .spawn_agent(
+            project_id,
+            Some("fake".to_string()),
+            None,
+            None,
+            vec![todo.id],
+            vec![pad.id],
+        )
+        .await
+        .expect("spawn agent for todo and scratchpad");
+
+    assert_eq!(orch.agent_for_todo(todo.id), Some(agent));
+    assert_eq!(orch.agent_for_scratchpad(pad.id), None);
+    assert!(orch.list_scratchpads(project_id).expect("list")[0]
+        .assigned_agent
+        .is_none());
+
+    orch.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn spawning_on_a_todo_with_a_bogus_scratchpad_still_succeeds() {
+    // Per the "ignored if a to-do is also given" contract, an
+    // invalid/deleted scratchpad id must not fail a to-do spawn.
+    let dir = tempfile::tempdir().expect("tempdir");
+    let orch =
+        Orchestrator::new().with_adapters(AdapterRegistry::new(vec![Arc::new(FakeAgentAdapter)]));
+    let project_id = orch
+        .open_project(dir.path().to_path_buf())
+        .await
+        .expect("open project");
+    let todo = orch
+        .add_todo(project_id, "wire up OAuth")
+        .expect("add todo");
+    let bogus_id = podium_core::ScratchpadId::new();
+
+    let agent = orch
+        .spawn_agent(
+            project_id,
+            Some("fake".to_string()),
+            None,
+            None,
+            vec![todo.id],
+            vec![bogus_id],
+        )
+        .await
+        .expect("spawn agent for todo, ignoring the bogus scratchpad id");
+
+    assert_eq!(orch.agent_for_todo(todo.id), Some(agent));
+    assert_eq!(orch.agent_for_scratchpad(bogus_id), None);
+
+    orch.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn removing_an_agent_clears_its_scratchpad_assignment() {
     let dir = tempfile::tempdir().expect("tempdir");
     let orch = Arc::new(

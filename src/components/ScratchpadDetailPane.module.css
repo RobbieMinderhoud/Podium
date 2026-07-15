@@ -139,7 +139,13 @@
 .editorArea :global(.scratchpad-editor-content-wrapper) {
   display: flex;
   flex-direction: column;
-  flex: 1;
+  /* `flex: 1` shorthand is `flex-basis: 0%` — combined with an explicit
+     (non-`auto`) `min-height`, that suppresses flexbox's automatic
+     content-based minimum size, so the box was clamped to exactly the
+     parent's height no matter how much text it held (row vs. column
+     direction didn't matter, this happens on either axis). `flex-basis:
+     auto` sizes from content first and only *then* grows/shrinks. */
+  flex: 1 0 auto;
   min-height: 100%;
 }
 
@@ -147,7 +153,7 @@
    selectors: Tiptap owns the inner DOM, so these can't be CSS-module-scoped
    class names on the ProseMirror-rendered elements themselves). */
 .body :global(.tiptap.ProseMirror) {
-  flex: 1;
+  flex: 1 0 auto;
   min-height: 100%;
   width: 100%;
   font-family: inherit;

@@ -1626,13 +1626,13 @@ fn compose_scratchpad_prompt(scratchpad: &ScratchpadInfo, user_prompt: Option<&s
     out.push_str("You are working on a Podium scratchpad.\n\n");
     out.push_str(&format!("Scratchpad id: {}\n", scratchpad.id));
     out.push_str(&format!("Title: {}\n", scratchpad.title));
-    out.push_str(&format!("\nContent:\n{}\n", scratchpad.content));
     out.push_str(
-        "\nThis scratchpad is shared with the user and other agents. Keep it \
-         up to date as you work, using the Podium MCP tools (pass the \
-         scratchpad id above):\n\
-         - list_scratchpads: check the current updatedAt before saving, so \
-         your update_scratchpad call doesn't get rejected as a conflict.\n\
+        "\nThis scratchpad is shared with the user and other agents. Fetch \
+         its current content and use the Podium MCP tools to keep it up to \
+         date as you work (pass the scratchpad id above):\n\
+         - list_scratchpads: get the current content and updatedAt — do \
+         this before your first update_scratchpad call, so it doesn't get \
+         rejected as a conflict.\n\
          - update_scratchpad: revise the content — pass the updatedAt you \
          just fetched as expected_updated_at.\n\
          - add_scratchpad_tag / remove_scratchpad_tag: tag it for easy \
@@ -1649,8 +1649,9 @@ fn compose_scratchpad_prompt(scratchpad: &ScratchpadInfo, user_prompt: Option<&s
 /// Build an agent launch prompt from one or more scratchpads. A single
 /// scratchpad keeps the original single-scratchpad phrasing; several
 /// scratchpads are handed over as one combined task, each listed with its
-/// id/title/content, followed by the standing MCP instructions (once) and
-/// any user prompt.
+/// id/title, followed by the standing MCP instructions (once) and any user
+/// prompt. Content isn't embedded here — the agent fetches it (and the
+/// current `updatedAt`) via `list_scratchpads` itself.
 fn compose_scratchpads_prompt(scratchpads: &[ScratchpadInfo], user_prompt: Option<&str>) -> String {
     if let [only] = scratchpads {
         return compose_scratchpad_prompt(only, user_prompt);
@@ -1664,15 +1665,15 @@ fn compose_scratchpads_prompt(scratchpads: &[ScratchpadInfo], user_prompt: Optio
         out.push_str(&format!("Scratchpad {} of {}\n", i + 1, scratchpads.len()));
         out.push_str(&format!("Scratchpad id: {}\n", scratchpad.id));
         out.push_str(&format!("Title: {}\n", scratchpad.title));
-        out.push_str(&format!("Content:\n{}\n", scratchpad.content));
         out.push('\n');
     }
     out.push_str(
-        "Work through all of the scratchpads above. This scratchpad is shared \
-         with the user and other agents; keep each one up to date as you \
-         work, using the Podium MCP tools (pass the relevant scratchpad id):\n\
-         - list_scratchpads: check the current updatedAt before saving, so \
-         your update_scratchpad call doesn't get rejected as a conflict.\n\
+        "Work through all of the scratchpads above. Fetch each one's current \
+         content and use the Podium MCP tools to keep it up to date as you \
+         work (pass the relevant scratchpad id):\n\
+         - list_scratchpads: get the current content and updatedAt — do \
+         this before your first update_scratchpad call for each scratchpad, \
+         so it doesn't get rejected as a conflict.\n\
          - update_scratchpad: revise the content — pass the updatedAt you \
          just fetched as expected_updated_at.\n\
          - add_scratchpad_tag / remove_scratchpad_tag: tag it for easy \
@@ -1994,13 +1995,14 @@ mod tests {
     }
 
     #[test]
-    fn compose_scratchpad_prompt_includes_title_content_and_mcp_instructions() {
+    fn compose_scratchpad_prompt_includes_title_and_mcp_instructions() {
         let pad = scratchpad("Launch notes", "draft the release checklist");
         let prompt = compose_scratchpad_prompt(&pad, None);
 
         assert!(prompt.contains(&format!("Scratchpad id: {}", pad.id)));
         assert!(prompt.contains("Title: Launch notes"));
-        assert!(prompt.contains("Content:\ndraft the release checklist"));
+        // Content isn't embedded — the agent fetches it via list_scratchpads.
+        assert!(!prompt.contains("draft the release checklist"));
         // The standing instructions name each tool the agent should use.
         assert!(prompt.contains("list_scratchpads"));
         assert!(prompt.contains("update_scratchpad"));
@@ -2041,8 +2043,9 @@ mod tests {
         assert!(prompt.contains(&format!("Scratchpad id: {}", b.id)));
         assert!(prompt.contains("Title: Launch notes"));
         assert!(prompt.contains("Title: Bug list"));
-        assert!(prompt.contains("Content:\ndraft the release checklist"));
-        assert!(prompt.contains("Content:\ntriage open reports"));
+        // Content isn't embedded for either scratchpad.
+        assert!(!prompt.contains("draft the release checklist"));
+        assert!(!prompt.contains("triage open reports"));
         // The standing MCP instructions and user prompt appear once.
         assert!(prompt.contains("update_scratchpad"));
         assert!(prompt.contains("Additional instructions:\nstart with launch notes"));

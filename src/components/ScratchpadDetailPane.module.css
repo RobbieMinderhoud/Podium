@@ -123,12 +123,22 @@
   flex: 1;
   min-width: 0;
   display: flex;
+  /* Column, not row: in row direction (the flex default) the default
+     `align-items: stretch` clamps this and its descendants to the visible
+     height of this scroll container, so text past that clamp overflowed
+     the editor's border/background instead of growing it — a large
+     document's content simply spilled onto the page below the box. Column
+     direction sizes the main axis (height) from content instead, so the
+     editor grows to fit everything and this container's own `overflow:
+     auto` scrolls the whole thing. */
+  flex-direction: column;
   padding: var(--sp-4);
   overflow: auto;
 }
 
 .editorArea :global(.scratchpad-editor-content-wrapper) {
   display: flex;
+  flex-direction: column;
   flex: 1;
   min-height: 100%;
 }

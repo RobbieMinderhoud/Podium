@@ -180,14 +180,7 @@ export function attachToElement(
   if (!entry) return;
   const { terminal } = entry;
   if (terminal.element) {
-    // Re-focusing a process unmounts and remounts `TerminalView` (only the
-    // focused process is rendered), so this runs on every switch back to an
-    // already-open terminal. Nothing about the reparent keeps the viewport
-    // pinned to where the user left it, so a busy terminal comes back
-    // showing a stale, top-of-buffer view; snapping to the bottom instead
-    // shows the latest output, which is what a returning user wants.
     reparentTerminalElement(terminal.element, container);
-    terminal.scrollToBottom();
   } else {
     // First open: clear any stale terminal already parented in this reused
     // host before xterm appends ours.

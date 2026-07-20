@@ -475,7 +475,6 @@ Conversations that touch no code (questions, exploration) need no branch.
 
 ## Roadmap
 
-All phases of `PLAN.md` are shipped, plus post-v1.0 work (scratchpads, the
-app-quit close guard, the Auggie adapter, the retro theme). `PLAN.md` is the
-historical build plan — consult it for design rationale, but this file and the
-code are the source of truth for current behaviour.
+All the originally planned phases are shipped, plus post-v1.0 work
+(scratchpads, the app-quit close guard, the Auggie adapter, the retro theme).
+This file and the code are the source of truth for current behaviour.

@@ -67,4 +67,4 @@ Agents Podium spawns itself get the URL + token automatically.
 `podium-core` (zero Tauri dependency) holds the orchestration/PTY/MCP domain;
 `src-tauri` is a thin IPC adapter; `src/` is the React frontend. See
 [`CLAUDE.md`](./CLAUDE.md) for the full architecture, IPC contract, and
-conventions, and [`PLAN.md`](./PLAN.md) for the original design rationale.
+conventions.

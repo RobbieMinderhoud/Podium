@@ -17,12 +17,12 @@ terminates the ConPTY child directly). Linux is kept in mind, not yet packaged.
 > Naming: product and repo are **Podium**. Core crate `podium-core`; bundle id
 > `com.podium.app`.
 
-> Lineage: architecturally patterned after the user's earlier app **Selene**
-> (a desktop SQL editor, same stack) — same Cargo workspace shape (a `*-core`
-> crate with zero Tauri dependency, a thin `src-tauri` IPC layer, a
-> presentation-only React frontend), the same `justfile`/version-sync
-> conventions, and this file mirrors Selene's `CLAUDE.md` structure. See
-> `../Selene/CLAUDE.md` for the sibling project's conventions and prior art.
+> Lineage: architecturally patterned after an earlier desktop app by the same
+> author — same Cargo workspace shape (a `*-core` crate with zero Tauri
+> dependency, a thin `src-tauri` IPC layer, a presentation-only React
+> frontend), the same `justfile`/version-sync conventions, and a mirrored
+> `CLAUDE.md` structure. (That sibling app is a private repo — this is
+> background context only; nothing here depends on access to it.)
 
 ## Boilerplate (shared skeleton)
 
@@ -32,13 +32,14 @@ React frontend), the `justfile`, `scripts/sync-version.sh`, CI, the shared
 config files, the design tokens, and the layering/IPC conventions — is
 extracted into a standalone template:
 
-- **Repo:** <https://github.com/RobbieMinderhoud/rust-application-boilerplate>
-  (`../rust-application-boilerplate` locally). It is the **upstream** source of
-  truth for the skeleton; Podium carries its domain (processes, PTYs, agents,
-  MCP) on top.
-- **Rule:** when a change here touches the **shared skeleton or conventions**
-  (not Podium-specific domain code), also open a **PR against the boilerplate**
-  so it stays current. App-specific code does not flow back.
+- **Repo:** <https://github.com/RobbieMinderhoud/rust-application-boilerplate>.
+  It is the **upstream** source of truth for the skeleton; Podium carries its
+  domain (processes, PTYs, agents, MCP) on top.
+- **Maintainer rule (internal):** when a change here touches the **shared
+  skeleton or conventions** (not Podium-specific domain code), the maintainer
+  also opens a **PR against the boilerplate** so it stays current. App-specific
+  code does not flow back. Outside contributors can ignore this — just send
+  your change as a normal PR to this repo.
 
 ## Status — v1.0
 

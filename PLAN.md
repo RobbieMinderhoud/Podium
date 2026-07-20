@@ -1,25 +1,35 @@
 # Podium — Agent Orchestration Workspace
 
+> **Historical design doc.** This is the original build plan Podium was
+> implemented from. It's kept for design rationale, not as current
+> documentation — `CLAUDE.md` and the code are the source of truth for how
+> Podium works today. Some sections are in Dutch, preserved as written.
+
 ## Context
 
-New greenfield app in `/Users/fasterforward/fasterforward/vcs/podium` (currently empty). Podium is an agent-orchestration workspace inspired by Solo (soloterm.com, closed source — we build from concept): open projects (folders), spawn AI coding agents and dev-server processes, watch and control them in embedded terminals. **Claude Code only in v1**, but agent support goes through an adapter abstraction so Codex/Gemini CLI/Aider fit later.
+New greenfield app (started empty). Podium is an agent-orchestration workspace
+that opens projects (folders), spawns AI coding agents and dev-server
+processes, and lets you watch and control them in embedded terminals.
+**Claude Code only in v1**, but agent support goes through an adapter
+abstraction so Codex/Gemini CLI/Aider fit later.
 
 Decisions made with the user:
-- **Stack:** Tauri 2 + React 19 + TypeScript (same as Selene and Solo itself), Rust backend.
+- **Stack:** Tauri 2 + React 19 + TypeScript, Rust backend.
 - **MVP:** projects + agents + processes + embedded terminals **+ built-in MCP server** so agents inside Podium can control Podium (list processes, read output, spawn agents).
 - **Agent model:** interactive Claude Code CLI in a PTY per agent.
-- **UI:** reuse Selene's island theme and theme selector 1-op-1 (Dark/Light/Retro).
+- **UI:** island theme with a Dark/Light/Retro theme selector.
 - Also: set up `CLAUDE.md`.
 
-Reference project: `/Users/fasterforward/fasterforward/vcs/Selene` (same author, Tauri 2 + React + CSS Modules + Zustand — conventions and visual system are copied from here).
+The visual system and workspace conventions were carried over from an earlier
+Tauri 2 + React + Zustand desktop app by the same author (private).
 
 ## Repo layout
 
 ```
 podium/
 ├─ Cargo.toml                 # [workspace] members = ["src-tauri", "crates/*"]; workspace.package = version source of truth
-├─ rust-toolchain.toml, justfile, scripts/sync-version.sh   # copy from Selene
-├─ package.json, vite.config.ts, tsconfig.json, index.html, eslint/prettier configs  # mirror Selene (port 1420, strictPort)
+├─ rust-toolchain.toml, justfile, scripts/sync-version.sh   # from the shared skeleton
+├─ package.json, vite.config.ts, tsconfig.json, index.html, eslint/prettier configs  # shared skeleton (port 1420, strictPort)
 ├─ CLAUDE.md
 ├─ crates/podium-core/        # UI-agnostic core: ZERO tauri dependency, #![forbid(unsafe_code)]
 │  └─ src/
@@ -39,9 +49,10 @@ Key crates: `portable-pty 0.9` (PTY), `serde_yaml_ng` (yml), `rmcp` pinned (offi
 
 Tauri plugins: `dialog` (folder picker), `log`, `window-state`.
 
-## Visual system — port from Selene
+## Visual system — port from the shared skeleton
 
-Copy **nearly verbatim** (rename `selene.` storage keys → `podium.`):
+Carried over **nearly verbatim** from the author's earlier app (rename storage
+keys → `podium.`):
 - `src/styles/tokens.css` — all design tokens, 3 themes on `:root[data-theme]`. **Extend each theme block with `--term-*` xterm palette** (bg/fg/cursor/selection + 16 ANSI colors as literal hex — xterm can't parse `color-mix()`). Dark→GitHub-dark ANSI, Light→GitHub-light, Retro→Gruvbox-light.
 - `src/styles/global.css`, `src/lib/motion.ts` (MOTION, usePresence), `src/lib/platform.ts`
 - `src/state/themeStore.ts` — View Transitions crossfade, localStorage, `data-theme` attribute
@@ -55,9 +66,9 @@ New frontend files:
 - `src/lib/terminalRegistry.ts` — **xterm instances live OUTSIDE React**, keyed by processId, reparentable host div (solves StrictMode double-mount; scrollback survives switching). Re-theme all live terminals on themeStore change.
 - `src/lib/terminalTheme.ts` — `readTerminalTheme(): ITheme` via getComputedStyle over `--term-*` vars
 - `src/components/TerminalView.tsx` (attach/detach + ResizeObserver → fit → `process_resize`), `TerminalPane.tsx` (island + header: naam, status dot, start/stop/restart), `Sidebar.tsx` (ProjectSwitcher bovenaan; secties Agents / Processes / Terminals met `+`-knoppen), `ProcessRow.tsx`, `WelcomeScreen.tsx` (open folder + recents), `NewAgentModal.tsx`
-- `src/ipc/{types,commands,events}.ts` — typed invoke-wrappers (Selene-patroon), `src/state/{projectStore,processStore}.ts`
+- `src/ipc/{types,commands,events}.ts` — typed invoke-wrappers, `src/state/{projectStore,processStore}.ts`
 
-npm deps: react 19, zustand 5, `@xterm/xterm` + `@xterm/addon-fit`, lucide-react, @tauri-apps/api + plugin-dialog + plugin-log. Geen TanStack Query (state is push-based). Dev-deps mirror Selene (vite 7, vitest, eslint 9, prettier).
+npm deps: react 19, zustand 5, `@xterm/xterm` + `@xterm/addon-fit`, lucide-react, @tauri-apps/api + plugin-dialog + plugin-log. Geen TanStack Query (state is push-based). Dev-deps: vite 7, vitest, eslint 9, prettier.
 
 ## Backend architecture
 
@@ -94,9 +105,9 @@ Alle commands `Result<T, IpcError{message,kind}>`. **Terminal-data via per-attac
 - Overige commands: `project_open/close`, `projects_list`, `project_config_reload`, `recents_list/remove` (recents.json in app-config-dir, atomic writes, cap 20), `processes_list`, `process_start/stop/restart`, `process_write {processId,dataB64}`, `process_resize {processId,cols,rows}`, `agent_spawn {projectId,prompt?,name?,adapterId?}`, `adapters_list`, `mcp_status` (url, geen token).
 - Global Tauri events (laag volume): `process:status`, `process:added/removed`, `project:opened/closed`.
 
-## CLAUDE.md (nieuw, gemodelleerd naar Selene's)
+## CLAUDE.md (nieuw)
 
-Secties: wat Podium is + status; tech stack tabel; architectuur (workspace, podium-core UI-agnostisch, src-tauri dun); adapter-patroon (Claude nu, Codex/Gemini later); volledige IPC-contract-tabel + TermEvent/seq-protocol; veldcasing-nuance (envelope camelCase, domain types snake_case); build/run (`just dev|build|check|test|lint|format`); conventies: `#![forbid(unsafe_code)]`, `clippy -D warnings`, motion-tokens verplicht (geen hardcoded durations, alleen transform/opacity, prefers-reduced-motion), security (MCP-token nooit in logs/IPC, `killpg` bij stop, geen secrets in podium.yml aanraden), settings-discoverability (elke user-facing feature in SettingsModal); versioning (workspace.package + sync-version.sh); roadmap (Windows/Linux, meer adapters, todos/scratchpads/timers/locks à la Solo, idle-detectie, CPU/mem stats).
+Secties: wat Podium is + status; tech stack tabel; architectuur (workspace, podium-core UI-agnostisch, src-tauri dun); adapter-patroon (Claude nu, Codex/Gemini later); volledige IPC-contract-tabel + TermEvent/seq-protocol; veldcasing-nuance (envelope camelCase, domain types snake_case); build/run (`just dev|build|check|test|lint|format`); conventies: `#![forbid(unsafe_code)]`, `clippy -D warnings`, motion-tokens verplicht (geen hardcoded durations, alleen transform/opacity, prefers-reduced-motion), security (MCP-token nooit in logs/IPC, `killpg` bij stop, geen secrets in podium.yml aanraden), settings-discoverability (elke user-facing feature in SettingsModal); versioning (workspace.package + sync-version.sh); roadmap (Windows/Linux, meer adapters, todos/scratchpads/timers/locks, idle-detectie, CPU/mem stats).
 
 ## Build-fasen (elke fase compileert, lint, demo'baar)
 

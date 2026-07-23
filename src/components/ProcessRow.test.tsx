@@ -29,8 +29,40 @@ function process(id: string, name: string, kind: ProcessKind): ProcessInfo {
     status: { state: "notStarted" },
     restartPolicy: "never",
     command: "echo hi",
+    worktree: null,
   };
 }
+
+describe("ProcessRow worktree badge", () => {
+  beforeEach(() => {
+    useProcessStore.setState(initialProcess, true);
+  });
+
+  it("shows a branch badge for a process running in a worktree", () => {
+    seed();
+    const p = {
+      ...process("a1", "agent", { kind: "agent", adapter: "claude-code" }),
+      worktree: "fix-login",
+    };
+    render(<ProcessRow process={p} />);
+    expect(
+      screen.getByRole("img", { name: "Runs in worktree fix-login" }),
+    ).toBeInTheDocument();
+  });
+
+  it("shows no badge for a project-root process", () => {
+    seed();
+    render(
+      <ProcessRow
+        process={process("a2", "agent", {
+          kind: "agent",
+          adapter: "claude-code",
+        })}
+      />,
+    );
+    expect(screen.queryByRole("img", { name: /worktree/i })).toBeNull();
+  });
+});
 
 function seed() {
   const renameProcess = vi.fn(() => Promise.resolve());

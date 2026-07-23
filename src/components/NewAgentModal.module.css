@@ -41,3 +41,16 @@
   font-size: var(--fs-sm);
   color: var(--warning);
 }
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  cursor: pointer;
+}
+
+.help {
+  margin: var(--sp-1) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+}

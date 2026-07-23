@@ -47,6 +47,14 @@
   outline: none;
 }
 
+/* Muted branch glyph for processes running in a Podium-managed worktree. */
+.worktreeBadge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-faint);
+}
+
 /* Agent activity hint (working…/idle/needs input) — quiet, right-aligned. */
 .activity {
   flex-shrink: 0;

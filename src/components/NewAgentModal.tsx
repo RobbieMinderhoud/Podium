@@ -36,6 +36,7 @@ export function NewAgentModal({
   const [adapterId, setAdapterId] = useState("");
   const [name, setName] = useState("");
   const [prompt, setPrompt] = useState("");
+  const [worktree, setWorktree] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // Reset the form and (re)probe adapters on every open.
@@ -46,6 +47,7 @@ export function NewAgentModal({
     setAdapterId("");
     setName(initialName ?? "");
     setPrompt("");
+    setWorktree(false);
     setBusy(false);
     // Fetch the catalog and the configured default together so the dropdown
     // lands on the user's default agent (Settings → Agents), not just the
@@ -82,6 +84,7 @@ export function NewAgentModal({
       name: name.trim() || undefined,
       prompt: prompt.trim() || undefined,
       todoIds: todoIds && todoIds.length > 0 ? todoIds : undefined,
+      worktree: worktree || undefined,
     });
     setBusy(false);
     if (info) onClose();
@@ -161,6 +164,21 @@ export function NewAgentModal({
             placeholder="What should the agent work on?"
             onChange={(e) => setPrompt(e.target.value)}
           />
+        </div>
+
+        <div className={styles.field}>
+          <label className={styles.checkboxLabel}>
+            <input
+              type="checkbox"
+              checked={worktree}
+              onChange={(e) => setWorktree(e.target.checked)}
+            />
+            Run in a git worktree
+          </label>
+          <p className={styles.help}>
+            Creates an isolated checkout under .podium/worktrees so the agent's
+            changes don't touch your working tree.
+          </p>
         </div>
 
         {/* Hidden submit so Enter in the inputs starts the agent. */}

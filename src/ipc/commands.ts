@@ -29,6 +29,7 @@ import type {
   TermEvent,
   TodoId,
   TodoInfo,
+  WorktreeInfo,
 } from "./types";
 
 /** Narrow an unknown rejection to the structured `IpcError` shape. */
@@ -201,6 +202,7 @@ export function agentSpawn(
     prompt: options.prompt ?? null,
     todoIds: options.todoIds ?? null,
     scratchpadIds: options.scratchpadIds ?? null,
+    worktree: options.worktree ?? null,
   });
 }
 
@@ -242,6 +244,38 @@ export function agentSettingsSetMergeMode(
   mode: MergeMode,
 ): Promise<AgentSettingsDto> {
   return invoke("agent_settings_set_merge_mode", { mode });
+}
+
+/**
+ * Toggle whether agents are asked to offer a git worktree before modifying
+ * code. Returns the refreshed settings.
+ */
+export function agentSettingsSetSuggestWorktree(
+  enabled: boolean,
+): Promise<AgentSettingsDto> {
+  return invoke("agent_settings_set_suggest_worktree", { enabled });
+}
+
+// ---------------------------------------------------------------------------
+// Worktrees
+// ---------------------------------------------------------------------------
+
+/** List a project's Podium-managed git worktrees. */
+export function worktreeList(projectId: ProjectId): Promise<WorktreeInfo[]> {
+  return invoke("worktree_list", { projectId });
+}
+
+/**
+ * Remove a Podium-managed git worktree; returns the refreshed list. Rejects
+ * with kind `"worktreeInUse"` while a process runs in it, and with
+ * `"worktreeDirty"` when it has uncommitted changes and `force` is false.
+ */
+export function worktreeRemove(
+  projectId: ProjectId,
+  name: string,
+  force: boolean,
+): Promise<WorktreeInfo[]> {
+  return invoke("worktree_remove", { projectId, name, force });
 }
 
 // ---------------------------------------------------------------------------

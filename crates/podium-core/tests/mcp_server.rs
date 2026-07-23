@@ -6,9 +6,10 @@ use std::time::Duration;
 
 use podium_core::mcp::tools::{
     AddTodoLinkParams, AddTodoParams, AssignTodoParams, CommentTodoParams, CreateScratchpadParams,
-    GetProcessOutputParams, ListScratchpadsParams, ListTodosParams, PodiumTools,
-    RenameSessionParams, ScratchpadTagParams, SetScratchpadArchivedParams, SpawnAgentParams,
-    UpdateScratchpadParams, UpdateTodoParams,
+    CreateWorktreeParams, GetProcessOutputParams, ListScratchpadsParams, ListTodosParams,
+    ListWorktreesParams, PodiumTools, RemoveWorktreeParams, RenameSessionParams,
+    ScratchpadTagParams, SetScratchpadArchivedParams, SpawnAgentParams, UpdateScratchpadParams,
+    UpdateTodoParams,
 };
 use podium_core::mcp::{self, McpServer};
 use podium_core::{
@@ -256,6 +257,9 @@ async fn tools_list_includes_scratchpad_tools() {
         "add_scratchpad_tag",
         "remove_scratchpad_tag",
         "set_scratchpad_archived",
+        "create_worktree",
+        "list_worktrees",
+        "remove_worktree",
     ] {
         assert!(
             tools.contains(&name),
@@ -594,6 +598,7 @@ async fn spawn_agent_is_capped_at_eight_active_agents_per_project() {
             None,
             vec![],
             vec![],
+            false,
         )
         .await
         .unwrap_or_else(|e| panic!("agent {n} under the cap should spawn: {e}"));
@@ -607,6 +612,7 @@ async fn spawn_agent_is_capped_at_eight_active_agents_per_project() {
             None,
             vec![],
             vec![],
+            false,
         )
         .await
         .expect_err("ninth concurrent agent must be rejected");
@@ -641,6 +647,7 @@ async fn agent_spawned_from_todo_takes_the_todo_name() {
             None,
             vec![todo.id],
             vec![],
+            false,
         )
         .await
         .expect("spawn agent for todo");
@@ -653,6 +660,7 @@ async fn agent_spawned_from_todo_takes_the_todo_name() {
             None,
             vec![todo.id],
             vec![],
+            false,
         )
         .await
         .expect("spawn second agent for todo");
@@ -677,6 +685,7 @@ async fn agent_spawned_from_todo_takes_the_todo_name() {
             None,
             vec![todo.id],
             vec![],
+            false,
         )
         .await
         .expect("spawn named agent for todo");
@@ -713,6 +722,7 @@ async fn spawning_on_a_todo_assigns_the_agent_and_unassign_clears_it() {
             None,
             vec![todo.id],
             vec![],
+            false,
         )
         .await
         .expect("spawn agent for todo");
@@ -759,6 +769,7 @@ async fn removing_an_agent_clears_its_todo_assignment() {
             None,
             vec![todo.id],
             vec![],
+            false,
         )
         .await
         .expect("spawn agent for todo");
@@ -794,6 +805,7 @@ async fn assign_todo_tool_self_assigns_a_running_agent() {
             None,
             vec![],
             vec![],
+            false,
         )
         .await
         .expect("spawn bare agent");
@@ -847,6 +859,7 @@ async fn rename_session_tool_renames_the_calling_agent() {
             None,
             vec![],
             vec![],
+            false,
         )
         .await
         .expect("spawn agent");
@@ -905,6 +918,7 @@ async fn spawn_agent_tool_accepts_multiple_todo_ids_as_one_agent() {
             todo_ids: Some(vec![a.id.to_string(), b.id.to_string()]),
             scratchpad_id: None,
             scratchpad_ids: None,
+            worktree: None,
         }))
         .await
         .expect("spawn_agent over MCP");
@@ -951,6 +965,7 @@ async fn spawning_on_a_scratchpad_assigns_the_agent_and_unassign_clears_it() {
             None,
             vec![],
             vec![pad.id],
+            false,
         )
         .await
         .expect("spawn agent for scratchpad");
@@ -1004,6 +1019,7 @@ async fn spawning_on_both_todo_and_scratchpad_ignores_the_scratchpad() {
             None,
             vec![todo.id],
             vec![pad.id],
+            false,
         )
         .await
         .expect("spawn agent for todo and scratchpad");
@@ -1041,6 +1057,7 @@ async fn spawning_on_a_todo_with_a_bogus_scratchpad_still_succeeds() {
             None,
             vec![todo.id],
             vec![bogus_id],
+            false,
         )
         .await
         .expect("spawn agent for todo, ignoring the bogus scratchpad id");
@@ -1072,6 +1089,7 @@ async fn removing_an_agent_clears_its_scratchpad_assignment() {
             None,
             vec![],
             vec![pad.id],
+            false,
         )
         .await
         .expect("spawn agent for scratchpad");
@@ -1106,6 +1124,7 @@ async fn list_scratchpads_enriches_assigned_agent() {
             None,
             vec![],
             vec![pad.id],
+            false,
         )
         .await
         .expect("spawn agent for scratchpad");
@@ -1148,6 +1167,7 @@ async fn spawn_agent_tool_accepts_scratchpad_ids() {
             todo_ids: None,
             scratchpad_id: Some(a.id.to_string()),
             scratchpad_ids: Some(vec![a.id.to_string(), b.id.to_string()]),
+            worktree: None,
         }))
         .await
         .expect("spawn_agent over MCP");
@@ -1272,7 +1292,7 @@ async fn bare_spawn_uses_the_global_default_adapter() {
         .await
         .expect("open project");
     let id = orch
-        .spawn_agent(project_id, None, None, None, vec![], vec![])
+        .spawn_agent(project_id, None, None, None, vec![], vec![], false)
         .await
         .expect("spawn agent");
 
@@ -1302,7 +1322,7 @@ async fn project_default_adapter_overrides_the_global_one() {
         .await
         .expect("open project");
     let id = orch
-        .spawn_agent(project_id, None, None, None, vec![], vec![])
+        .spawn_agent(project_id, None, None, None, vec![], vec![], false)
         .await
         .expect("spawn agent");
 
@@ -1335,6 +1355,7 @@ async fn spawn_agent_applies_global_override_and_default_args() {
             None,
             vec![],
             vec![],
+            false,
         )
         .await
         .expect("spawn agent");
@@ -1346,6 +1367,212 @@ async fn spawn_agent_applies_global_override_and_default_args() {
         .map(|p| p.command)
         .expect("process present");
     assert_eq!(command, "/opt/echo --model opus");
+
+    orch.shutdown().await;
+}
+
+/// A throwaway git repo with one commit, identity pinned so commits work on
+/// machines without global git config.
+fn init_git_repo() -> tempfile::TempDir {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let run = |args: &[&str]| {
+        let status = std::process::Command::new("git")
+            .arg("-C")
+            .arg(dir.path())
+            .args(args)
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .expect("git runs");
+        assert!(status.success(), "git {args:?} failed");
+    };
+    run(&["init", "-b", "main"]);
+    run(&["config", "user.name", "Test"]);
+    run(&["config", "user.email", "test@example.com"]);
+    std::fs::write(dir.path().join("README.md"), "sample\n").expect("write file");
+    run(&["add", "."]);
+    run(&["commit", "-m", "initial"]);
+    dir
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn worktree_tools_round_trip_create_list_remove() {
+    let dir = init_git_repo();
+    let orch = Arc::new(Orchestrator::new());
+    let project_id = orch
+        .open_project(dir.path().to_path_buf())
+        .await
+        .expect("open project");
+    let tools = PodiumTools::new(Arc::clone(&orch));
+
+    let created = tools
+        .create_worktree(Parameters(CreateWorktreeParams {
+            project_id: project_id.to_string(),
+            name: "Fix Login".to_string(),
+        }))
+        .await
+        .expect("create_worktree over MCP");
+    let created_json =
+        serde_json::from_str::<serde_json::Value>(&first_text(&created)).expect("worktree json");
+    assert_eq!(created_json["name"], "fix-login");
+    assert_eq!(created_json["branch"], "podium/fix-login");
+    assert_eq!(created_json["inUse"], false);
+
+    let listed = tools
+        .list_worktrees(Parameters(ListWorktreesParams {
+            project_id: project_id.to_string(),
+        }))
+        .await
+        .expect("list_worktrees over MCP");
+    let listed_json =
+        serde_json::from_str::<serde_json::Value>(&first_text(&listed)).expect("list json");
+    let names: Vec<&str> = listed_json
+        .as_array()
+        .expect("array")
+        .iter()
+        .filter_map(|w| w["name"].as_str())
+        .collect();
+    assert_eq!(names, ["fix-login"]);
+
+    tools
+        .remove_worktree(Parameters(RemoveWorktreeParams {
+            project_id: project_id.to_string(),
+            name: "fix-login".to_string(),
+            force: None,
+        }))
+        .await
+        .expect("remove_worktree over MCP");
+    let listed = tools
+        .list_worktrees(Parameters(ListWorktreesParams {
+            project_id: project_id.to_string(),
+        }))
+        .await
+        .expect("list after remove");
+    let listed_json =
+        serde_json::from_str::<serde_json::Value>(&first_text(&listed)).expect("list json");
+    assert!(listed_json.as_array().expect("array").is_empty());
+
+    orch.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn spawn_agent_tool_with_worktree_reports_it_in_the_snapshot() {
+    let dir = init_git_repo();
+    let orch = Arc::new(
+        Orchestrator::new().with_adapters(AdapterRegistry::new(vec![Arc::new(FakeAgentAdapter)])),
+    );
+    let project_id = orch
+        .open_project(dir.path().to_path_buf())
+        .await
+        .expect("open project");
+    let tools = PodiumTools::new(Arc::clone(&orch));
+
+    let spawned = tools
+        .spawn_agent(Parameters(SpawnAgentParams {
+            project_id: project_id.to_string(),
+            prompt: None,
+            name: Some("isolated work".to_string()),
+            adapter_id: Some("fake".to_string()),
+            todo_id: None,
+            todo_ids: None,
+            scratchpad_id: None,
+            scratchpad_ids: None,
+            worktree: Some(true),
+        }))
+        .await
+        .expect("spawn_agent with worktree over MCP");
+    let snapshot =
+        serde_json::from_str::<serde_json::Value>(&first_text(&spawned)).expect("process json");
+    assert_eq!(snapshot["worktree"], "isolated-work");
+
+    // The worktree shows up in list_worktrees as in use.
+    let listed = tools
+        .list_worktrees(Parameters(ListWorktreesParams {
+            project_id: project_id.to_string(),
+        }))
+        .await
+        .expect("list_worktrees over MCP");
+    let listed_json =
+        serde_json::from_str::<serde_json::Value>(&first_text(&listed)).expect("list json");
+    let entry = listed_json
+        .as_array()
+        .expect("array")
+        .iter()
+        .find(|w| w["name"] == "isolated-work")
+        .expect("spawned worktree listed")
+        .clone();
+    assert_eq!(entry["inUse"], true);
+
+    orch.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn spawn_agent_in_worktree_on_a_non_git_project_fails_cleanly() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let orch =
+        Orchestrator::new().with_adapters(AdapterRegistry::new(vec![Arc::new(FakeAgentAdapter)]));
+    let project_id = orch
+        .open_project(dir.path().to_path_buf())
+        .await
+        .expect("open project");
+
+    let err = orch
+        .spawn_agent(
+            project_id,
+            Some("fake".to_string()),
+            None,
+            None,
+            vec![],
+            vec![],
+            true,
+        )
+        .await
+        .expect_err("worktree spawn on a non-git project must fail");
+    assert!(matches!(err, CoreError::NotAGitRepo), "got: {err}");
+    // The failure happened before any process was created.
+    assert!(orch.list_processes(Some(project_id)).is_empty());
+
+    orch.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn remove_worktree_is_refused_while_an_agent_runs_in_it() {
+    let dir = init_git_repo();
+    let orch =
+        Orchestrator::new().with_adapters(AdapterRegistry::new(vec![Arc::new(FakeAgentAdapter)]));
+    let project_id = orch
+        .open_project(dir.path().to_path_buf())
+        .await
+        .expect("open project");
+
+    let agent = orch
+        .spawn_agent(
+            project_id,
+            Some("fake".to_string()),
+            Some("busy".to_string()),
+            None,
+            vec![],
+            vec![],
+            true,
+        )
+        .await
+        .expect("spawn agent in worktree");
+    let info = orch
+        .list_processes(Some(project_id))
+        .into_iter()
+        .find(|p| p.id == agent)
+        .expect("agent listed");
+    assert_eq!(info.worktree.as_deref(), Some("busy"));
+
+    let err = orch
+        .remove_worktree(project_id, "busy", false)
+        .expect_err("removal must be refused while the agent runs in it");
+    assert!(matches!(err, CoreError::WorktreeInUse), "got: {err}");
+
+    // Once the agent is gone, removal succeeds.
+    orch.remove_process(agent).await.expect("remove agent");
+    orch.remove_worktree(project_id, "busy", false)
+        .expect("remove worktree after agent stopped");
 
     orch.shutdown().await;
 }

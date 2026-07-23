@@ -51,11 +51,12 @@ them in sync when you add a command or MCP tool.
   engine (spawn via `$SHELL -lic`, process groups, `killpg` SIGTERM→SIGKILL
   stop), ring-buffer scrollback with per-chunk `seq`, supervision (exponential
   backoff + circuit breaker), agent adapters (Claude Code, Auggie), per-project
-  to-dos and scratchpads (persisted, shared with agents), and the built-in MCP
-  server (axum + rmcp streamable-HTTP, bearer auth, 22 tools). Zero Tauri
+  to-dos and scratchpads (persisted, shared with agents), git worktree
+  management for agent isolation, and the built-in MCP server (axum + rmcp
+  streamable-HTTP, bearer auth, 25 tools). Zero Tauri
   dependency; unit tests plus real-PTY/MCP integration tests on plain
   `cargo test`.
-- ✅ **Tauri IPC layer** (`src-tauri`): **52 commands**, per-attach terminal
+- ✅ **Tauri IPC layer** (`src-tauri`): **55 commands**, per-attach terminal
   `Channel` streaming (16ms/64KiB batching), a global-event forwarder for
   lifecycle events, persistent recents + workspace list, window-state
   persistence, an app-quit close guard while agents/terminals run
@@ -68,7 +69,7 @@ them in sync when you add a command or MCP tool.
   detail views that fill the work area (description/comment thread; scratchpad
   editor with TOC, mutually exclusive with the focused process), settings +
   theme (dark/light/retro) + toasts, Zustand stores, typed IPC wrappers over
-  all 52 commands.
+  all 55 commands.
 - ✅ CI (`.github/workflows/ci.yml`): one macOS job — rustfmt, clippy
   `-D warnings`, `cargo test --workspace` (real PTYs), typecheck, ESLint,
   Vitest, production build.
@@ -101,7 +102,8 @@ podium/
 │  ├─ config.rs                # podium.yml serde types (deny_unknown_fields)
 │  ├─ process/                 # ProcessKind/Status/Spec, pty.rs (engine), scrollback.rs, supervisor.rs
 │  ├─ agent/                   # AgentAdapter trait + claude.rs (ClaudeCodeAdapter) + auggie.rs (AuggieAdapter), McpConnectInfo
-│  ├─ mcp/                     # built-in MCP server (mod.rs) + the 22 tools (tools.rs) + stdio bridge (bridge.rs)
+│  ├─ mcp/                     # built-in MCP server (mod.rs) + the 25 tools (tools.rs) + stdio bridge (bridge.rs)
+│  ├─ worktree.rs              # Podium-managed git worktrees (create/list/remove under .podium/worktrees/)
 │  ├─ todo.rs                  # per-project to-dos (TodoInfo + persistent TodoStore)
 │  ├─ events.rs                # PodiumEvent + broadcast EventBus
 │  ├─ ids.rs                   # ProjectId / ProcessId / TodoId (UUID newtypes)
@@ -169,10 +171,11 @@ one lock acquisition, atomically, before the async `podium.yml` load.
   `assign_todo` (a running agent self-assigns a to-do via its
   `PODIUM_PROCESS_ID`, so the user sees who owns it),
   `rename_session` (a running agent renames itself via its
-  `PODIUM_PROCESS_ID` to reflect what the session is about), and the
+  `PODIUM_PROCESS_ID` to reflect what the session is about), the
   scratchpad tools `list_scratchpads`, `create_scratchpad`,
   `update_scratchpad`, `add_scratchpad_tag`, `remove_scratchpad_tag`,
-  `set_scratchpad_archived`.
+  `set_scratchpad_archived`, and the worktree tools `create_worktree`,
+  `list_worktrees`, `remove_worktree`.
   Spawned agents get the URL + token via 0600 per-agent config files under
   `{app_data_dir}/mcp` (wiped on every start); the same dir holds
   `server.json` (current URL + token, 0600) for the **stdio bridge**:
@@ -210,6 +213,21 @@ one lock acquisition, atomically, before the async `podium.yml` load.
   is rejected as `CoreError::ScratchpadConflict` instead of silently
   overwriting it; the frontend surfaces this as an in-pane reload/force-save
   choice rather than a toast.
+- **Worktrees** (`worktree.rs`): Podium-managed git worktrees for agent
+  isolation, at `<project_root>/.podium/worktrees/<name>` on a fresh
+  `podium/<name>` branch from HEAD (name slugified, auto-de-duplicated with
+  `-2`, `-3`, …). `.podium/` is excluded via `.git/info/exclude` (never
+  `.gitignore`). Created via the spawn checkbox (`agent_spawn`'s `worktree`
+  flag — the worktree becomes the agent's cwd and is named after it) or the
+  `create_worktree` MCP tool mid-session. `git worktree list --porcelain` is
+  the source of truth (no persistence, no events);
+  `ProcessInfo.worktree` is derived from the process cwd and feeds the
+  sidebar badge, `in_use` and the removal guard. Removal is refused while an
+  active process runs in the worktree (`WorktreeInUse`) or while it has
+  uncommitted changes unless forced (`WorktreeDirty`); the branch is always
+  kept. The global `suggest_worktree` setting (default on) makes agent
+  identity prompts ask the user about a worktree before the first code
+  change; an agent spawned into a worktree is told it already runs in one.
 
 ### Tauri IPC contract
 
@@ -240,11 +258,12 @@ maps camelCase JS argument keys to the snake_case Rust parameters.
 | `process_resize`        | `{ processId, cols, rows }`                 | –                 |
 | `process_attach`        | `{ processId, channel: Channel<TermEvent> }`| –                 |
 | `adapters_list`         | –                                           | `AdapterInfo[]`   |
-| `agent_spawn`           | `{ projectId, adapterId?, name?, prompt?, todoIds?, scratchpadIds? }` | `ProcessInfo` |
+| `agent_spawn`           | `{ projectId, adapterId?, name?, prompt?, todoIds?, scratchpadIds?, worktree? }` | `ProcessInfo` |
 | `agent_settings_get`    | –                                           | `AgentSettingsDto` |
 | `agent_settings_set_adapter` | `{ adapterId, command?, defaultArgs }` | `AgentSettingsDto` |
 | `agent_settings_set_default_adapter` | `{ adapterId? }` (blank clears) | `AgentSettingsDto` |
 | `agent_settings_set_merge_mode` | `{ mode }`                       | `AgentSettingsDto` |
+| `agent_settings_set_suggest_worktree` | `{ enabled }`             | `AgentSettingsDto` |
 | `mcp_status`            | –                                           | `{ running, url? }` (token-free by design) |
 | `mcp_clients_status`    | –                                           | `McpClientInfo[]` |
 | `mcp_client_install`    | `{ clientId }`                              | `McpClientInfo[]` |
@@ -270,6 +289,8 @@ maps camelCase JS argument keys to the snake_case Rust parameters.
 | `scratchpad_remove_tag` | `{ projectId, id, tag }`                    | `ScratchpadInfo`  |
 | `scratchpad_set_archived` | `{ projectId, id, archived }`             | `ScratchpadInfo`  |
 | `scratchpad_unassign`   | `{ projectId, id }`                         | `ScratchpadInfo`  |
+| `worktree_list`         | `{ projectId }`                             | `WorktreeInfo[]`  |
+| `worktree_remove`       | `{ projectId, name, force }`                | `WorktreeInfo[]` (refreshed list) |
 | `window_confirm_close`  | –                                           | –                 |
 
 `window_confirm_close` is the frontend's answer to the app-quit close guard:

@@ -69,4 +69,44 @@ pub struct ProcessInfo {
     pub status: ProcessStatus,
     pub restart_policy: RestartPolicy,
     pub command: String,
+    /// Name of the Podium-managed worktree the process runs in, derived from
+    /// its cwd (`…/.podium/worktrees/<name>`); `None` for the project root.
+    pub worktree: Option<String>,
+}
+
+/// The worktree name a cwd implies: the directory name when its parent is
+/// `worktrees` under `.podium` (how [`crate::worktree::create`] lays paths
+/// out), else `None`. Derived rather than stored so it can never go stale.
+// ponytail: a worktree created mid-session over MCP doesn't change the
+// process's cwd, so it won't get a badge or removal guard this way.
+pub fn worktree_name_from_cwd(cwd: &std::path::Path) -> Option<String> {
+    let name = cwd.file_name()?.to_str()?.to_string();
+    let parent = cwd.parent()?;
+    if parent.file_name()? != "worktrees" || parent.parent()?.file_name()? != ".podium" {
+        return None;
+    }
+    Some(name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::Path;
+
+    #[test]
+    fn worktree_name_is_derived_from_the_cwd_layout() {
+        assert_eq!(
+            worktree_name_from_cwd(Path::new("/repo/.podium/worktrees/fix-login")),
+            Some("fix-login".to_string())
+        );
+        assert_eq!(worktree_name_from_cwd(Path::new("/repo")), None);
+        assert_eq!(
+            worktree_name_from_cwd(Path::new("/repo/.podium/other/fix-login")),
+            None
+        );
+        assert_eq!(
+            worktree_name_from_cwd(Path::new("/repo/worktrees/fix-login")),
+            None
+        );
+    }
 }

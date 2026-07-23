@@ -41,6 +41,7 @@ const ADAPTERS: AdapterInfo[] = [
 const SETTINGS: AgentSettingsDto = {
   mergeMode: "merge",
   defaultAdapter: "claude-code",
+  suggestWorktree: true,
   adapters: [],
 };
 
@@ -58,6 +59,7 @@ function seedSpawn() {
       },
       restartPolicy: "never" as const,
       command: "claude",
+      worktree: null,
     }),
   );
   useProcessStore.setState({ ...initialProcess, spawnAgent }, true);

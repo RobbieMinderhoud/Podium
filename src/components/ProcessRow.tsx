@@ -9,7 +9,14 @@ import { useProcessStore } from "../state/processStore";
 import { AgentScratchpadList } from "./AgentScratchpadList";
 import { AgentTodoList } from "./AgentTodoList";
 import { StatusDot } from "./StatusDot";
-import { CloseIcon, EditIcon, RestartIcon, RunIcon, StopIcon } from "./icons";
+import {
+  BranchIcon,
+  CloseIcon,
+  EditIcon,
+  RestartIcon,
+  RunIcon,
+  StopIcon,
+} from "./icons";
 import styles from "./ProcessRow.module.css";
 
 export function ProcessRow({ process }: { process: ProcessInfo }) {
@@ -107,6 +114,16 @@ export function ProcessRow({ process }: { process: ProcessInfo }) {
             }
           >
             {process.name}
+          </span>
+        )}
+        {process.worktree && !editing && (
+          <span
+            className={styles.worktreeBadge}
+            role="img"
+            aria-label={`Runs in worktree ${process.worktree}`}
+            title={`Runs in worktree ${process.worktree}`}
+          >
+            <BranchIcon size={11} />
           </span>
         )}
         {isAgent && running && !editing && (

@@ -190,6 +190,7 @@ pub fn run() {
             commands::agent::agent_settings_set_adapter,
             commands::agent::agent_settings_set_default_adapter,
             commands::agent::agent_settings_set_merge_mode,
+            commands::agent::agent_settings_set_suggest_worktree,
             commands::mcp::mcp_status,
             commands::mcp::mcp_clients_status,
             commands::mcp::mcp_client_install,
@@ -216,6 +217,8 @@ pub fn run() {
             commands::scratchpad::scratchpad_set_archived,
             commands::scratchpad::scratchpad_unassign,
             commands::window::window_confirm_close,
+            commands::worktree::worktree_list,
+            commands::worktree::worktree_remove,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

@@ -24,6 +24,7 @@ use crate::process::{ProcessInfo, ProcessKind, ProcessSpec, ProcessStatus, Resta
 use crate::project::{self, ConfiguredProcess};
 use crate::scratchpad::{ScratchpadInfo, ScratchpadStore};
 use crate::todo::{TodoInfo, TodoStore};
+use crate::worktree::WorktreeInfo;
 
 /// Capacity (in chunks) of each process's raw-output broadcast channel.
 const CHUNK_CHANNEL_CAPACITY: usize = 1024;
@@ -112,6 +113,7 @@ impl ManagedProcess {
             status: self.status.clone(),
             restart_policy: self.spec.restart_policy,
             command: self.spec.command.clone(),
+            worktree: crate::process::worktree_name_from_cwd(&self.spec.cwd),
         }
     }
 
@@ -219,6 +221,12 @@ impl Orchestrator {
     /// Set how global default args combine with a project's `agents.extra_args`.
     pub fn set_agent_merge_mode(&self, mode: MergeMode) -> CoreResult<AgentSettings> {
         self.agent_settings.set_merge_mode(mode)
+    }
+
+    /// Set whether agents are told to offer an isolated git worktree before
+    /// their first code change.
+    pub fn set_agent_suggest_worktree(&self, enabled: bool) -> CoreResult<AgentSettings> {
+        self.agent_settings.set_suggest_worktree(enabled)
     }
 
     /// Set (or clear) the global default adapter used by bare spawns. A blank
@@ -1065,8 +1073,11 @@ impl Orchestrator {
     /// complete when done); multiple to-dos are handed over as one combined
     /// task. `scratchpad_ids` works the same way for scratchpads, but only
     /// when `todo_ids` is empty — to-dos win if both are somehow populated.
-    /// On a start failure the process stays listed as `NotStarted` so the
-    /// user can retry from the UI.
+    /// When `worktree` is true a fresh git worktree named after the agent is
+    /// created under `.podium/worktrees/` and used as the agent's cwd (the
+    /// project must be a git repo). On a start failure the process stays
+    /// listed as `NotStarted` so the user can retry from the UI.
+    #[allow(clippy::too_many_arguments)] // deliberate: one flat spawn API
     pub async fn spawn_agent(
         &self,
         project_id: ProjectId,
@@ -1075,6 +1086,7 @@ impl Orchestrator {
         prompt: Option<String>,
         todo_ids: Vec<TodoId>,
         scratchpad_ids: Vec<ScratchpadId>,
+        worktree: bool,
     ) -> CoreResult<ProcessId> {
         let (root, agents, existing_names) = {
             let inner = self.inner.lock().expect(LOCK_POISONED);
@@ -1171,6 +1183,12 @@ impl Orchestrator {
         } else {
             base_prompt.map(str::to_string)
         };
+        // A requested worktree is created before the launch plan so the
+        // identity prompt can say the agent already runs in one; its name
+        // follows the window name (slugified + de-duplicated).
+        let wt = worktree
+            .then(|| crate::worktree::create(&root, &name))
+            .transpose()?;
         // Combine the global default args (Settings → Agents) with the
         // project's `agents.extra_args` per the user's merge mode, and apply
         // any global command override for this adapter.
@@ -1187,11 +1205,13 @@ impl Orchestrator {
             command_override,
             mcp: mcp.as_ref(),
             named,
+            in_worktree: wt.is_some(),
+            suggest_worktree: global.suggest_worktree && wt.is_none(),
         })?;
         let spec = ProcessSpec {
             name,
             command: plan.command,
-            cwd: root,
+            cwd: wt.as_ref().map(|w| w.path.clone()).unwrap_or(root.clone()),
             env: plan.env,
             kind: ProcessKind::Agent {
                 adapter: adapter.id().to_string(),
@@ -1200,13 +1220,22 @@ impl Orchestrator {
         };
         {
             let mut inner = self.inner.lock().expect(LOCK_POISONED);
-            if !inner.projects.contains_key(&project_id) {
-                return Err(CoreError::ProjectNotFound);
-            }
             // Re-check under the same lock as the insert: a concurrent spawn
             // may have raced past the early check above.
-            if active_agent_count(&inner, project_id) >= MAX_AGENTS_PER_PROJECT {
-                return Err(CoreError::AgentLimitReached);
+            let guard = if !inner.projects.contains_key(&project_id) {
+                Some(CoreError::ProjectNotFound)
+            } else if active_agent_count(&inner, project_id) >= MAX_AGENTS_PER_PROJECT {
+                Some(CoreError::AgentLimitReached)
+            } else {
+                None
+            };
+            if let Some(err) = guard {
+                drop(inner);
+                // Best-effort: don't leak the just-created worktree.
+                if let Some(w) = &wt {
+                    let _ = crate::worktree::remove(&root, &w.name, true);
+                }
+                return Err(err);
             }
             insert_process(&mut inner, process_id, project_id, spec, false);
         }
@@ -1268,6 +1297,50 @@ impl Orchestrator {
             .filter(|(_, p)| project_id.is_none_or(|pid| p.project_id == pid))
             .map(|(id, p)| p.info(*id))
             .collect()
+    }
+
+    /// The project's Podium-managed git worktrees, with `in_use` marking the
+    /// ones an active process runs in. Shells out to git — call from a
+    /// blocking-friendly context.
+    pub fn list_worktrees(&self, project_id: ProjectId) -> CoreResult<Vec<WorktreeInfo>> {
+        let root = self.project_root(project_id)?;
+        let mut infos = crate::worktree::list(&root)?;
+        let inner = self.inner.lock().expect(LOCK_POISONED);
+        for info in &mut infos {
+            info.in_use = inner.processes.values().any(|p| {
+                p.project_id == project_id && p.is_active() && p.spec.cwd.starts_with(&info.path)
+            });
+        }
+        Ok(infos)
+    }
+
+    /// Create a Podium-managed git worktree in the project (name slugified
+    /// and de-duplicated). Shells out to git — call from a blocking-friendly
+    /// context.
+    pub fn create_worktree(&self, project_id: ProjectId, name: &str) -> CoreResult<WorktreeInfo> {
+        let root = self.project_root(project_id)?;
+        crate::worktree::create(&root, name)
+    }
+
+    /// Remove a Podium-managed git worktree. Refused while an active process
+    /// runs in it, or while it has uncommitted changes unless `force`; its
+    /// `podium/<name>` branch is kept. Shells out to git — call from a
+    /// blocking-friendly context.
+    pub fn remove_worktree(
+        &self,
+        project_id: ProjectId,
+        name: &str,
+        force: bool,
+    ) -> CoreResult<()> {
+        let root = self.project_root(project_id)?;
+        let in_use = self
+            .list_worktrees(project_id)?
+            .iter()
+            .any(|w| w.name == name && w.in_use);
+        if in_use {
+            return Err(CoreError::WorktreeInUse);
+        }
+        crate::worktree::remove(&root, name, force)
     }
 
     /// Whether any agent or terminal process is currently running (or

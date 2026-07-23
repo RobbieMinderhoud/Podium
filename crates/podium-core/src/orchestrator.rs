@@ -1323,6 +1323,24 @@ impl Orchestrator {
         Ok(infos)
     }
 
+    /// The git branch currently checked out in a process's working
+    /// directory, or `None` when its cwd is not a git repo / detached. Feeds
+    /// the focused-process header. Shells out to git — call from a
+    /// blocking-friendly context.
+    pub fn process_git_branch(&self, id: ProcessId) -> CoreResult<Option<String>> {
+        let cwd = {
+            let inner = self.inner.lock().expect(LOCK_POISONED);
+            inner
+                .processes
+                .get(&id)
+                .ok_or(CoreError::ProcessNotFound)?
+                .spec
+                .cwd
+                .clone()
+        };
+        Ok(crate::worktree::current_branch(&cwd))
+    }
+
     /// Create a Podium-managed git worktree in the project (name slugified
     /// and de-duplicated). Shells out to git — call from a blocking-friendly
     /// context.

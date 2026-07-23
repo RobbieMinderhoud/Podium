@@ -143,6 +143,17 @@ export function processList(projectId?: ProjectId): Promise<ProcessInfo[]> {
   return invoke("process_list", { projectId: projectId ?? null });
 }
 
+/**
+ * The git branch checked out in the process's working directory, or `null`
+ * when its cwd is not a git repo / detached. Fetched on demand for the
+ * focused process (shells out to git).
+ */
+export function processGitBranch(
+  processId: ProcessId,
+): Promise<string | null> {
+  return invoke("process_git_branch", { processId });
+}
+
 /** Rename a process's display label; blank names are rejected. */
 export function processRename(
   processId: ProcessId,

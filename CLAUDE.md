@@ -56,7 +56,7 @@ them in sync when you add a command or MCP tool.
   streamable-HTTP, bearer auth, 25 tools). Zero Tauri
   dependency; unit tests plus real-PTY/MCP integration tests on plain
   `cargo test`.
-- ✅ **Tauri IPC layer** (`src-tauri`): **55 commands**, per-attach terminal
+- ✅ **Tauri IPC layer** (`src-tauri`): **56 commands**, per-attach terminal
   `Channel` streaming (16ms/64KiB batching), a global-event forwarder for
   lifecycle events, persistent recents + workspace list, window-state
   persistence, an app-quit close guard while agents/terminals run
@@ -69,7 +69,7 @@ them in sync when you add a command or MCP tool.
   detail views that fill the work area (description/comment thread; scratchpad
   editor with TOC, mutually exclusive with the focused process), settings +
   theme (dark/light/retro) + toasts, Zustand stores, typed IPC wrappers over
-  all 55 commands.
+  all 56 commands.
 - ✅ CI (`.github/workflows/ci.yml`): one macOS job — rustfmt, clippy
   `-D warnings`, `cargo test --workspace` (real PTYs), typecheck, ESLint,
   Vitest, production build.
@@ -250,6 +250,7 @@ maps camelCase JS argument keys to the snake_case Rust parameters.
 | `process_add`           | `{ projectId, spec: NewProcess }`           | `ProcessInfo`     |
 | `process_remove`        | `{ processId }`                             | –                 |
 | `process_list`          | `{ projectId? }`                            | `ProcessInfo[]`   |
+| `process_git_branch`    | `{ processId }`                             | `string \| null`  |
 | `process_rename`        | `{ processId, name }`                       | `ProcessInfo`     |
 | `process_start`         | `{ processId }`                             | –                 |
 | `process_stop`          | `{ processId }`                             | –                 |

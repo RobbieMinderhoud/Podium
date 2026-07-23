@@ -48,6 +48,19 @@ fn git(root: &Path, args: &[&str]) -> Option<String> {
     crate::platform::run_shell_stdout(&cmd)
 }
 
+/// The current branch checked out at `cwd`, or `None` when it is not a git
+/// repository or is in a detached HEAD (`rev-parse` yields the literal
+/// `HEAD`). Shells out to git — call from a blocking-friendly context.
+pub fn current_branch(cwd: &Path) -> Option<String> {
+    let branch = git(cwd, &["rev-parse", "--abbrev-ref", "HEAD"])?
+        .trim()
+        .to_string();
+    if branch.is_empty() || branch == "HEAD" {
+        return None;
+    }
+    Some(branch)
+}
+
 /// `root` must be (inside) a git repository; also covers "git not
 /// installed", which probes the same way.
 fn ensure_git_repo(root: &Path) -> CoreResult<()> {
@@ -406,6 +419,17 @@ mod tests {
         std::fs::remove_dir_all(&wt.path).unwrap();
         remove(repo.path(), "gone", false).unwrap();
         assert!(list(repo.path()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn current_branch_reports_head_and_worktree_branches() {
+        let repo = init_repo();
+        assert_eq!(current_branch(repo.path()).as_deref(), Some("main"));
+        let wt = create(repo.path(), "feature").unwrap();
+        assert_eq!(current_branch(&wt.path).as_deref(), Some("podium/feature"));
+        // A non-git dir has no branch.
+        let plain = tempfile::tempdir().unwrap();
+        assert_eq!(current_branch(plain.path()), None);
     }
 
     #[test]

@@ -224,6 +224,9 @@ export interface AssignedAgent {
   processId: ProcessId;
   /** The agent's display name, for showing without a process lookup. */
   name: string;
+  /** The session's subtle UI colour (hex), so the item can be tinted to match
+   * the agent that owns it; `null` in legacy/edge cases. */
+  color: string | null;
 }
 
 /**

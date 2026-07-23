@@ -56,7 +56,7 @@ them in sync when you add a command or MCP tool.
   streamable-HTTP, bearer auth, 25 tools). Zero Tauri
   dependency; unit tests plus real-PTY/MCP integration tests on plain
   `cargo test`.
-- ✅ **Tauri IPC layer** (`src-tauri`): **56 commands**, per-attach terminal
+- ✅ **Tauri IPC layer** (`src-tauri`): **57 commands**, per-attach terminal
   `Channel` streaming (16ms/64KiB batching), a global-event forwarder for
   lifecycle events, persistent recents + workspace list, window-state
   persistence, an app-quit close guard while agents/terminals run
@@ -69,7 +69,7 @@ them in sync when you add a command or MCP tool.
   detail views that fill the work area (description/comment thread; scratchpad
   editor with TOC, mutually exclusive with the focused process), settings +
   theme (dark/light/retro) + toasts, Zustand stores, typed IPC wrappers over
-  all 56 commands.
+  all 57 commands.
 - ✅ CI (`.github/workflows/ci.yml`): one macOS job — rustfmt, clippy
   `-D warnings`, `cargo test --workspace` (real PTYs), typecheck, ESLint,
   Vitest, production build.
@@ -169,7 +169,8 @@ one lock acquisition, atomically, before the async `podium.yml` load.
   `list_todos`, `add_todo`, `complete_todo`, `update_todo`, `comment_todo`,
   `add_todo_link` (pin an issue/PR URL to the top of a to-do),
   `assign_todo` (a running agent self-assigns a to-do via its
-  `PODIUM_PROCESS_ID`, so the user sees who owns it),
+  `PODIUM_PROCESS_ID`, so the user sees who owns it — blocked if the to-do is
+  already owned by another live session),
   `rename_session` (a running agent renames itself via its
   `PODIUM_PROCESS_ID` to reflect what the session is about), the
   scratchpad tools `list_scratchpads`, `create_scratchpad`,
@@ -201,13 +202,20 @@ one lock acquisition, atomically, before the async `podium.yml` load.
   them via `add_todo_link`, shown at the top of the detail pane) and can be
   **archived**: listing auto-archives any done to-do left over from an
   earlier day, and a to-do can be archived/unarchived manually — archived
-  items drop out of the active list and show in the Archive modal.
+  items drop out of the active list and show in the Archive modal. An
+  **assigned** to-do carries its owning agent's session colour (each agent
+  gets a subtle colour at spawn from an 8-hue palette, avoiding colours other
+  live agents hold; it rides on `AssignedAgent`): the sidebar row is tinted to
+  match, its spawn button is hidden, and it drops out of multi-select — one
+  session owns it.
 - **Scratchpads** (`scratchpad.rs`): each project has shared freeform-notes
   scratchpads, visible to the user and every agent (MCP). Persisted in one
   `scratchpads.json`, keyed by project root path like to-dos. Scratchpads
   carry free-text **tags** (`add_tag`/`remove_tag`, dedup by exact value) and
   can be **archived/unarchived** manually (`set_archived`, mirroring to-dos'
-  archive semantics but with no auto-archive sweep). Content/title updates
+  archive semantics but with no auto-archive sweep) and **deleted** from the
+  Archive view (`scratchpad_remove` / `Orchestrator::remove_scratchpad`, again
+  mirroring to-dos — deletion lives behind archiving). Content/title updates
   require an `expected_updated_at` matching the scratchpad's current
   `updatedAt` — a stale value (a concurrent user or agent edit landed first)
   is rejected as `CoreError::ScratchpadConflict` instead of silently
@@ -289,6 +297,7 @@ maps camelCase JS argument keys to the snake_case Rust parameters.
 | `scratchpad_add_tag`    | `{ projectId, id, tag }`                    | `ScratchpadInfo`  |
 | `scratchpad_remove_tag` | `{ projectId, id, tag }`                    | `ScratchpadInfo`  |
 | `scratchpad_set_archived` | `{ projectId, id, archived }`             | `ScratchpadInfo`  |
+| `scratchpad_remove`     | `{ projectId, id }`                         | –                 |
 | `scratchpad_unassign`   | `{ projectId, id }`                         | `ScratchpadInfo`  |
 | `worktree_list`         | `{ projectId }`                             | `WorktreeInfo[]`  |
 | `worktree_remove`       | `{ projectId, name, force }`                | `WorktreeInfo[]` (refreshed list) |

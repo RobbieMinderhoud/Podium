@@ -148,9 +148,7 @@ export function processList(projectId?: ProjectId): Promise<ProcessInfo[]> {
  * when its cwd is not a git repo / detached. Fetched on demand for the
  * focused process (shells out to git).
  */
-export function processGitBranch(
-  processId: ProcessId,
-): Promise<string | null> {
+export function processGitBranch(processId: ProcessId): Promise<string | null> {
   return invoke("process_git_branch", { processId });
 }
 
@@ -518,6 +516,14 @@ export function scratchpadSetArchived(
   archived: boolean,
 ): Promise<ScratchpadInfo> {
   return invoke("scratchpad_set_archived", { projectId, id, archived });
+}
+
+/** Permanently remove a scratchpad (from the Archive modal). */
+export function scratchpadRemove(
+  projectId: ProjectId,
+  id: ScratchpadId,
+): Promise<void> {
+  return invoke("scratchpad_remove", { projectId, id });
 }
 
 /**

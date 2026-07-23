@@ -17,6 +17,9 @@ pub enum CoreError {
     #[error("to-do not found")]
     TodoNotFound,
 
+    #[error("to-do is already assigned to another session")]
+    TodoAlreadyAssigned,
+
     #[error("comment not found")]
     CommentNotFound,
 

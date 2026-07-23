@@ -111,6 +111,7 @@ pub async fn process_add(
         env: Vec::new(),
         kind: spec.kind,
         restart_policy: spec.restart_policy,
+        color: None,
     };
     let id = state
         .orchestrator

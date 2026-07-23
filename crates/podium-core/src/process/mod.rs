@@ -77,6 +77,10 @@ pub struct ProcessInfo {
     /// Name of the Podium-managed worktree the process runs in, derived from
     /// its cwd (`…/.podium/worktrees/<name>`); `None` for the project root.
     pub worktree: Option<String>,
+    /// Subtle UI colour of an agent session (from its spec), so the sidebar
+    /// row can be tinted to match the to-dos this session owns. `None` for
+    /// services/terminals.
+    pub color: Option<String>,
 }
 
 /// The worktree name a cwd implies: the directory name when its parent is

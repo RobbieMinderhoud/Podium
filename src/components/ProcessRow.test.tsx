@@ -30,6 +30,7 @@ function process(id: string, name: string, kind: ProcessKind): ProcessInfo {
     restartPolicy: "never",
     command: "echo hi",
     worktree: null,
+    color: null,
   };
 }
 
@@ -61,6 +62,34 @@ describe("ProcessRow worktree badge", () => {
       />,
     );
     expect(screen.queryByRole("img", { name: /worktree/i })).toBeNull();
+  });
+});
+
+describe("ProcessRow session colour", () => {
+  beforeEach(() => {
+    useProcessStore.setState(initialProcess, true);
+  });
+
+  it("tints an agent row with its session colour", () => {
+    seed();
+    const p = {
+      ...process("a1", "agent", { kind: "agent", adapter: "claude-code" }),
+      color: "#3e63dd",
+    };
+    render(<ProcessRow process={p} />);
+    const row = screen.getByText("agent").closest('[data-session="true"]');
+    expect(row).not.toBeNull();
+    expect((row as HTMLElement).style.getPropertyValue("--session-color")).toBe(
+      "#3e63dd",
+    );
+  });
+
+  it("leaves a colourless process untinted", () => {
+    seed();
+    render(
+      <ProcessRow process={process("t1", "term", { kind: "terminal" })} />,
+    );
+    expect(screen.getByText("term").closest("[data-session]")).toBeNull();
   });
 });
 

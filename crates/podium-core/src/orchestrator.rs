@@ -114,6 +114,7 @@ impl ManagedProcess {
             restart_policy: self.spec.restart_policy,
             command: self.spec.command.clone(),
             worktree: crate::process::worktree_name_from_cwd(&self.spec.cwd),
+            color: self.spec.color.clone(),
         }
     }
 

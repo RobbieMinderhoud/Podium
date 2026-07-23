@@ -40,6 +40,7 @@ function process(id: string, name: string, kind: ProcessKind): ProcessInfo {
     restartPolicy: "never",
     command: "echo hi",
     worktree: null,
+    color: null,
   };
 }
 

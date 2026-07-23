@@ -60,6 +60,7 @@ function seedSpawn() {
       restartPolicy: "never" as const,
       command: "claude",
       worktree: null,
+      color: null,
     }),
   );
   useProcessStore.setState({ ...initialProcess, spawnAgent }, true);

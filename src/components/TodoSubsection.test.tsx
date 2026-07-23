@@ -76,6 +76,21 @@ describe("TodoSubsection multi-select", () => {
     useProjectStore.setState(initialProject, true);
   });
 
+  it("marks a Cmd/Ctrl-clicked row multiselect, not open", () => {
+    seed([todo("a", "Todo A"), todo("b", "Todo B")]);
+    render(
+      <TodoSubsection
+        projectId={PROJECT}
+        onOpenTodo={vi.fn()}
+        onPickAgent={vi.fn()}
+      />,
+    );
+    fireEvent.click(titleOf("Todo A"), { metaKey: true });
+    const row = screen.getByText("Todo A").closest("[data-multiselect]");
+    expect(row).not.toBeNull();
+    expect((row as HTMLElement).getAttribute("data-open")).toBeNull();
+  });
+
   it("opens a to-do on a plain click, without selecting", () => {
     seed([todo("a", "Todo A"), todo("b", "Todo B")]);
     const onOpenTodo = vi.fn();

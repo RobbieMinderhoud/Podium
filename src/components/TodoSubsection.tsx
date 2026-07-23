@@ -24,6 +24,7 @@ import { useProcessStore } from "../state/processStore";
 import { useProjectStore } from "../state/projectStore";
 import { useTodoStore } from "../state/todoStore";
 import { ArchiveModal } from "./ArchiveModal";
+import { CopyIdButton } from "./CopyIdButton";
 import {
   AddIcon,
   AgentIcon,
@@ -40,7 +41,10 @@ const NO_TODOS: TodoInfo[] = [];
 
 interface TodoRowProps {
   todo: TodoInfo;
-  selected: boolean;
+  /** Part of a Cmd/Ctrl+click multi-select — queued to hand to one agent. */
+  multiSelected: boolean;
+  /** Currently open in the work area (a plain-click "view" gesture). */
+  open: boolean;
   onToggleDone: () => void;
   /** Plain click opens; Cmd/Ctrl or Shift click drives selection. */
   onActivate: (e: React.MouseEvent) => void;
@@ -52,7 +56,8 @@ interface TodoRowProps {
 /** One to-do: a checkbox, a click-to-open title, and hover actions. */
 function TodoRow({
   todo,
-  selected,
+  multiSelected,
+  open,
   onToggleDone,
   onActivate,
   onSpawn,
@@ -65,7 +70,8 @@ function TodoRow({
     <div
       className={styles.row}
       data-done={todo.done ? "true" : undefined}
-      data-selected={selected ? "true" : undefined}
+      data-multiselect={multiSelected ? "true" : undefined}
+      data-open={open ? "true" : undefined}
       data-assigned={assigned ? "true" : undefined}
       style={
         assigned?.color
@@ -120,6 +126,7 @@ function TodoRow({
         >
           <ArchiveIcon size={13} />
         </button>
+        <CopyIdButton id={todo.id} className={styles.action} />
       </div>
     </div>
   );
@@ -311,7 +318,8 @@ export function TodoSubsection({
             <TodoRow
               key={todo.id}
               todo={todo}
-              selected={selected.has(todo.id) || openTodoId === todo.id}
+              multiSelected={selected.has(todo.id)}
+              open={openTodoId === todo.id}
               onToggleDone={() =>
                 void setTodoDone(projectId, todo.id, !todo.done)
               }

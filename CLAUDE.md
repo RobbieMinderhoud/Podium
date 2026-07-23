@@ -205,9 +205,14 @@ one lock acquisition, atomically, before the async `podium.yml` load.
   items drop out of the active list and show in the Archive modal. An
   **assigned** to-do carries its owning agent's session colour (each agent
   gets a subtle colour at spawn from an 8-hue palette, avoiding colours other
-  live agents hold; it rides on `AssignedAgent`): the sidebar row is tinted to
-  match, its spawn button is hidden, and it drops out of multi-select — one
-  session owns it.
+  live agents hold; it rides on `AssignedAgent`, and is also surfaced on
+  `ProcessInfo.color`): the to-do row **and the agent's own sidebar row** are
+  tinted the same colour so the two can be matched at a glance; the to-do's
+  spawn button is hidden and it drops out of multi-select — one session owns
+  it. Sidebar rows distinguish being **open** in the work area (a subtle
+  accent highlight, like agents/terminals) from being in a **Cmd/Ctrl+click
+  multi-select** (a bolder accent fill — those rows are queued for the next
+  agent).
 - **Scratchpads** (`scratchpad.rs`): each project has shared freeform-notes
   scratchpads, visible to the user and every agent (MCP). Persisted in one
   `scratchpads.json`, keyed by project root path like to-dos. Scratchpads

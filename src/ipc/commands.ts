@@ -148,9 +148,7 @@ export function processList(projectId?: ProjectId): Promise<ProcessInfo[]> {
  * when its cwd is not a git repo / detached. Fetched on demand for the
  * focused process (shells out to git).
  */
-export function processGitBranch(
-  processId: ProcessId,
-): Promise<string | null> {
+export function processGitBranch(processId: ProcessId): Promise<string | null> {
   return invoke("process_git_branch", { processId });
 }
 
@@ -214,6 +212,8 @@ export function agentSpawn(
     todoIds: options.todoIds ?? null,
     scratchpadIds: options.scratchpadIds ?? null,
     worktree: options.worktree ?? null,
+    worktreeName: options.worktreeName ?? null,
+    worktreeOnHead: options.worktreeOnHead ?? null,
     args: options.args ?? null,
   });
 }

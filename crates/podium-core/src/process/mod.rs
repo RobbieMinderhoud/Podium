@@ -56,6 +56,11 @@ pub struct ProcessSpec {
     pub env: Vec<(String, String)>,
     pub kind: ProcessKind,
     pub restart_policy: RestartPolicy,
+    /// Subtle UI colour identifying an agent session (assigned at spawn from a
+    /// palette, avoiding colours other live agents already use). `None` for
+    /// services/terminals. Surfaced to the UI via a to-do's `AssignedAgent`.
+    #[serde(default)]
+    pub color: Option<String>,
 }
 
 /// Read-only snapshot of a managed process, for listing.
@@ -72,6 +77,10 @@ pub struct ProcessInfo {
     /// Name of the Podium-managed worktree the process runs in, derived from
     /// its cwd (`…/.podium/worktrees/<name>`); `None` for the project root.
     pub worktree: Option<String>,
+    /// Subtle UI colour of an agent session (from its spec), so the sidebar
+    /// row can be tinted to match the to-dos this session owns. `None` for
+    /// services/terminals.
+    pub color: Option<String>,
 }
 
 /// The worktree name a cwd implies: the directory name when its parent is

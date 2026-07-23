@@ -8,6 +8,88 @@ Internal refactors, tooling, and chores are intentionally omitted. (Automated
 changelog generation from Conventional Commits via git-cliff is planned but not
 yet set up.)
 
+## [1.3.0] - 2026-07-23
+
+### Added
+
+- **Git worktree management for agent isolation.** Agents can run in a
+  Podium-managed git worktree under `.podium/worktrees/`, so their edits don't
+  touch your working tree. Tick "Run in a git worktree" when spawning an agent,
+  or have an agent create one mid-session over MCP (`create_worktree`,
+  `list_worktrees`, `remove_worktree`). Worktrees list in a new Worktrees modal
+  and show as a badge on the agent's sidebar row; removal is refused while an
+  agent still runs in one or it has uncommitted changes (unless forced), and the
+  branch is always kept.
+- **Branch choice per worktree.** A worktree checks out a fresh `podium/<name>`
+  branch by default, or you can let the agent name its own branch (it starts on
+  a detached HEAD). Spawning one agent across several to-dos now forces you to
+  name the worktree explicitly, rather than borrowing one arbitrary to-do's text.
+- **Worktree prompting.** With the (default-on) "suggest worktree" setting,
+  agents are asked to offer an isolated worktree before their first code change;
+  an agent already running in a worktree is told so and won't offer another.
+- **Git branch in the agent window header.** The focused agent window shows the
+  git branch (and worktree) of its working directory.
+- **Per-session CLI args.** The New agent dialog has an Arguments field, seeded
+  from the adapter's default args, that overrides them for that spawn only.
+
+### Fixed
+
+- **Worktree deletion feedback.** Deleting a worktree now disables the delete
+  buttons and marks the row "Removing…" while it is in flight, so it can't be
+  triggered repeatedly.
+- **Window-switch lag.** The git-branch lookup for a focused window now runs off
+  the main thread (with a cache), so switching between agent windows no longer
+  briefly freezes the UI.
+
+## [1.2.2] - 2026-07-23
+
+### Added
+
+- **Assigned to-dos are colour-coded by session.** Each agent session gets a
+  subtle colour when it starts, and every to-do it owns is tinted to match — so
+  you can see at a glance which session is on what. An assigned to-do also hides
+  its "start agent" button and drops out of multi-select (one session owns it),
+  and an agent trying to claim a to-do already owned by another live session is
+  now refused over MCP.
+- **Copy-id button on to-dos and scratchpads.** The to-do and scratchpad detail
+  panes now have a button that copies the item's id to the clipboard — handy for
+  referencing it in a prompt or an MCP call.
+- **Delete archived scratchpads.** Archived scratchpads can now be permanently
+  deleted from the Archive view, the same way archived to-dos already could.
+
+### Fixed
+
+- **Grouped to-dos no longer borrow a random to-do's name for the session.**
+  Starting one agent on several selected to-dos left the session unnamed so the
+  agent names itself after reading them all, instead of taking whichever to-do
+  happened to be first.
+- **Selecting a to-do or scratchpad now highlights it.** Opening a to-do or
+  scratchpad in the work area highlights its sidebar row, matching how a focused
+  agent or terminal is shown.
+
+## [1.2.1] - 2026-07-23
+
+### Changed
+
+- **Agents no longer show start/stop/restart controls** — in the sidebar row
+  and the terminal pane header. An agent session is a one-shot conversation, not
+  a restartable service; services and terminals keep their controls.
+- **To-do titles are editable** in the detail pane header — via the edit button
+  or a double-click (Enter commits, Escape cancels).
+- **To-do descriptions autosave.** The Save button is gone; edits save after a
+  typing pause and flush on blur. External (agent) edits still sync in and no
+  longer clobber what you're typing.
+
+### Fixed
+
+- **The "needs input" notification no longer fires repeatedly.** Switching away
+  from an agent whose prompt you'd already seen used to ping every time; it now
+  fires once per prompt — viewing the agent acknowledges it, and only a new
+  prompt pings again.
+- **Adapter availability is probed once per app start** instead of every 60s, so
+  the slow per-adapter login-shell check no longer recurs during a session. A
+  newly installed CLI is picked up on the next launch.
+
 ## [1.2.0] - 2026-07-15
 
 ### Added

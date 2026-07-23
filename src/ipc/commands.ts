@@ -520,6 +520,14 @@ export function scratchpadSetArchived(
   return invoke("scratchpad_set_archived", { projectId, id, archived });
 }
 
+/** Permanently remove a scratchpad (from the Archive modal). */
+export function scratchpadRemove(
+  projectId: ProjectId,
+  id: ScratchpadId,
+): Promise<void> {
+  return invoke("scratchpad_remove", { projectId, id });
+}
+
 /**
  * Unassign a scratchpad from its agent (the sidebar (x) action). Sends a
  * best-effort cancel/rollback request to the agent's stdin first, then clears

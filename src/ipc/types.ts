@@ -70,6 +70,11 @@ export interface ProcessInfo {
    * from its cwd); `null` when it runs in the project root.
    */
   worktree: string | null;
+  /**
+   * Subtle UI colour of an agent session, so its sidebar row can be tinted to
+   * match the to-dos it owns; `null` for services/terminals.
+   */
+  color: string | null;
 }
 
 /**
@@ -237,6 +242,9 @@ export interface AssignedAgent {
   processId: ProcessId;
   /** The agent's display name, for showing without a process lookup. */
   name: string;
+  /** The session's subtle UI colour (hex), so the item can be tinted to match
+   * the agent that owns it; `null` in legacy/edge cases. */
+  color: string | null;
 }
 
 /**

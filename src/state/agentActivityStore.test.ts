@@ -40,6 +40,7 @@ function proc(
     restartPolicy: "never",
     command: "run",
     worktree: null,
+    color: null,
   };
 }
 

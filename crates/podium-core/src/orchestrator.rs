@@ -114,6 +114,7 @@ impl ManagedProcess {
             restart_policy: self.spec.restart_policy,
             command: self.spec.command.clone(),
             worktree: crate::process::worktree_name_from_cwd(&self.spec.cwd),
+            color: self.spec.color.clone(),
         }
     }
 
@@ -540,6 +541,14 @@ impl Orchestrator {
                     "process is not an agent in this project".to_string(),
                 ));
             }
+            // Block claiming a to-do already owned by a *different* live agent
+            // (a stale assignment whose process is gone resolves to `None`, so
+            // it can be reclaimed; re-claiming your own is idempotent).
+            if let Some(existing) = assigned_agent_of(&inner, todo_id) {
+                if existing.process_id != process_id {
+                    return Err(CoreError::TodoAlreadyAssigned);
+                }
+            }
             inner.todo_assignments.insert(todo_id, process_id);
             info.assigned_agent = assigned_agent_of(&inner, todo_id);
         }
@@ -944,6 +953,16 @@ impl Orchestrator {
         Ok(info)
     }
 
+    /// Permanently remove a scratchpad (deletion lives behind the Archive
+    /// view, mirroring to-dos). Emits `ScratchpadsChanged`.
+    pub fn remove_scratchpad(&self, project_id: ProjectId, id: ScratchpadId) -> CoreResult<()> {
+        let root = self.project_root(project_id)?;
+        self.scratchpads.remove(&root, id)?;
+        self.events
+            .publish(PodiumEvent::ScratchpadsChanged { project_id });
+        Ok(())
+    }
+
     /// Re-read `podium.yml`: update name/initials, replace config-defined
     /// processes (stopping any running ones), keep manually added processes.
     /// A parse/validation failure keeps current processes and only updates
@@ -1094,7 +1113,7 @@ impl Orchestrator {
         worktree_on_head: bool,
         args_override: Option<Vec<String>>,
     ) -> CoreResult<ProcessId> {
-        let (root, agents, existing_names) = {
+        let (root, agents, existing_names, session_color) = {
             let inner = self.inner.lock().expect(LOCK_POISONED);
             let handle = inner
                 .projects
@@ -1109,7 +1128,8 @@ impl Orchestrator {
                 .filter(|p| p.project_id == project_id)
                 .map(|p| p.spec.name.clone())
                 .collect();
-            (handle.root.clone(), handle.agents.clone(), names)
+            let color = pick_session_color(&inner, project_id);
+            (handle.root.clone(), handle.agents.clone(), names, color)
         };
         // Adapter precedence: an explicit choice, then the project's pinned
         // `agents.default_adapter`, then the global Settings → Agents default,
@@ -1157,14 +1177,20 @@ impl Orchestrator {
         // binary fallback) is told via its launch plan to rename itself over
         // MCP after the first user message.
         let explicit = name.as_deref().map(str::trim).filter(|n| !n.is_empty());
+        // A single to-do/scratchpad names the session after it; with several
+        // grouped, picking one is arbitrary ("a random to-do"), so leave the
+        // name underived — `named` stays false and the agent renames itself
+        // over MCP once it has read all of them.
         let derived = todos
             .first()
+            .filter(|_| todos.len() == 1)
             .map(|t| t.text.trim())
             .filter(|t| !t.is_empty())
             .map(str::to_string)
             .or_else(|| {
                 scratchpads
                     .first()
+                    .filter(|_| scratchpads.len() == 1)
                     .map(|s| s.title.trim())
                     .filter(|t| !t.is_empty())
                     .map(str::to_string)
@@ -1241,6 +1267,7 @@ impl Orchestrator {
                 adapter: adapter.id().to_string(),
             },
             restart_policy: RestartPolicy::Never,
+            color: Some(session_color),
         };
         {
             let mut inner = self.inner.lock().expect(LOCK_POISONED);
@@ -1599,6 +1626,43 @@ fn insert_configured(
     (added, auto_start)
 }
 
+/// Subtle session colours (Radix-ish hues) assigned round-robin to agent
+/// sessions so each session — and every to-do it owns — can be tinted the
+/// same. Solid base hues; the frontend applies the transparency.
+const SESSION_COLORS: [&str; 8] = [
+    "#3e63dd", // blue
+    "#30a46c", // green
+    "#e5484d", // red
+    "#8e4ec6", // purple
+    "#f76b15", // orange
+    "#12a594", // teal
+    "#e93d82", // pink
+    "#ffb224", // amber
+];
+
+/// Pick a session colour not currently used by another live agent in the
+/// project; once the palette is exhausted, cycle by the used count.
+// ponytail: two concurrent spawns could momentarily pick the same colour —
+// cosmetic only, and the max is 8 agents = palette size, so it's rare.
+fn pick_session_color(inner: &Inner, project_id: ProjectId) -> String {
+    let used: HashSet<&str> = inner
+        .processes
+        .values()
+        .filter(|p| {
+            p.project_id == project_id
+                && p.is_active()
+                && matches!(p.spec.kind, ProcessKind::Agent { .. })
+        })
+        .filter_map(|p| p.spec.color.as_deref())
+        .collect();
+    SESSION_COLORS
+        .iter()
+        .copied()
+        .find(|c| !used.contains(c))
+        .unwrap_or(SESSION_COLORS[used.len() % SESSION_COLORS.len()])
+        .to_string()
+}
+
 /// Resolve a to-do's assignment to an [`AssignedAgent`] snapshot, dropping a
 /// stale entry whose process has since vanished from the map.
 fn assigned_agent_of(inner: &Inner, todo_id: TodoId) -> Option<AssignedAgent> {
@@ -1606,6 +1670,7 @@ fn assigned_agent_of(inner: &Inner, todo_id: TodoId) -> Option<AssignedAgent> {
     inner.processes.get(&process_id).map(|p| AssignedAgent {
         process_id,
         name: p.spec.name.clone(),
+        color: p.spec.color.clone(),
     })
 }
 
@@ -1619,6 +1684,7 @@ fn scratchpad_assigned_agent_of(
     inner.processes.get(&process_id).map(|p| AssignedAgent {
         process_id,
         name: p.spec.name.clone(),
+        color: p.spec.color.clone(),
     })
 }
 
@@ -2300,6 +2366,7 @@ mod tests {
             env: Vec::new(),
             kind: ProcessKind::Terminal,
             restart_policy: RestartPolicy::Never,
+            color: None,
         };
         let id = orch.add_process(project_id, spec).await.unwrap();
 

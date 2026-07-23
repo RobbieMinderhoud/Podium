@@ -67,6 +67,12 @@ export function ProcessRow({ process }: { process: ProcessInfo }) {
       <div
         className={styles.row}
         data-selected={selected ? "true" : undefined}
+        data-session={isAgent && process.color ? "true" : undefined}
+        style={
+          process.color
+            ? ({ "--session-color": process.color } as React.CSSProperties)
+            : undefined
+        }
         role="button"
         tabIndex={0}
         onClick={() => setActiveProcess(process.id)}

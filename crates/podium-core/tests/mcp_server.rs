@@ -14,7 +14,7 @@ use podium_core::mcp::tools::{
 use podium_core::mcp::{self, McpServer};
 use podium_core::{
     AdapterRegistry, AgentAdapter, AgentLaunchCtx, CoreError, CoreResult, LaunchPlan, Orchestrator,
-    ProcessId, ProcessKind, ProcessSpec, ProcessStatus, ProjectId, RestartPolicy,
+    ProcessId, ProcessKind, ProcessSpec, ProcessStatus, ProjectId, RestartPolicy, TodoId,
 };
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::CallToolResult;
@@ -296,6 +296,7 @@ async fn tools_list_projects_and_read_ansi_stripped_output() {
                 env: Vec::new(),
                 kind: ProcessKind::Service,
                 restart_policy: RestartPolicy::Never,
+                color: None,
             },
         )
         .await
@@ -934,7 +935,9 @@ async fn spawn_agent_tool_accepts_multiple_todo_ids_as_one_agent() {
     let b = orch.add_todo(project_id, "write tests").expect("todo b");
 
     // Both to-dos (with `todo_id` overlapping `todo_ids` to prove dedup) go to
-    // one agent; the window inherits the first to-do's text.
+    // one agent. With several grouped, picking one to-do's text as the name is
+    // arbitrary, so the window is left generically named (the adapter binary)
+    // and the agent renames itself once it has read them all.
     let spawned = tools
         .spawn_agent(Parameters(SpawnAgentParams {
             project_id: project_id.to_string(),
@@ -956,7 +959,7 @@ async fn spawn_agent_tool_accepts_multiple_todo_ids_as_one_agent() {
         .as_str()
         .expect("name")
         .to_string();
-    assert_eq!(name, "wire up auth");
+    assert_eq!(name, "fake-agent", "grouped to-dos don't borrow one's text");
 
     // Exactly one agent was created for the two to-dos.
     let agents = orch
@@ -1697,6 +1700,76 @@ async fn remove_worktree_is_refused_while_an_agent_runs_in_it() {
     orch.remove_process(agent).await.expect("remove agent");
     orch.remove_worktree(project_id, "busy", false)
         .expect("remove worktree after agent stopped");
+
+    orch.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn assign_todo_is_blocked_when_already_owned_by_another_session() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let orch = Arc::new(
+        Orchestrator::new().with_adapters(AdapterRegistry::new(vec![Arc::new(FakeAgentAdapter)])),
+    );
+    let project_id = orch
+        .open_project(dir.path().to_path_buf())
+        .await
+        .expect("open project");
+    let tools = PodiumTools::new(Arc::clone(&orch));
+
+    let spawn_bare = || {
+        orch.spawn_agent(
+            project_id,
+            Some("fake".to_string()),
+            None,
+            None,
+            vec![],
+            vec![],
+            false,
+            None,
+            false,
+            None,
+        )
+    };
+    let first = spawn_bare().await.expect("spawn first agent");
+    let second = spawn_bare().await.expect("spawn second agent");
+    let todo = orch.add_todo(project_id, "wire up OAuth").expect("todo");
+    let todo2 = orch.add_todo(project_id, "write tests").expect("todo2");
+
+    let claim = |todo_id: TodoId, process_id: ProcessId| {
+        tools.assign_todo(Parameters(AssignTodoParams {
+            project_id: project_id.to_string(),
+            todo_id: todo_id.to_string(),
+            process_id: process_id.to_string(),
+        }))
+    };
+
+    // First session claims it; re-claiming your own is idempotent (allowed).
+    claim(todo.id, first).await.expect("first claim");
+    claim(todo.id, first)
+        .await
+        .expect("re-claiming your own is idempotent");
+    // A different live session cannot steal it.
+    assert!(
+        claim(todo.id, second).await.is_err(),
+        "a second session must not steal an owned to-do"
+    );
+    assert_eq!(orch.agent_for_todo(todo.id), Some(first));
+
+    // Two concurrent sessions get distinct colours (the palette avoids reusing
+    // a colour a live agent already holds). Colours live on the assignment.
+    claim(todo2.id, second).await.expect("second claims todo2");
+    let listed = orch.list_todos(project_id).expect("list");
+    let color_of = |tid: TodoId| {
+        listed
+            .iter()
+            .find(|t| t.id == tid)
+            .and_then(|t| t.assigned_agent.as_ref())
+            .and_then(|a| a.color.clone())
+    };
+    let c1 = color_of(todo.id);
+    let c2 = color_of(todo2.id);
+    assert!(c1.is_some() && c2.is_some(), "both carry a colour");
+    assert_ne!(c1, c2, "concurrent sessions get distinct colours");
 
     orch.shutdown().await;
 }

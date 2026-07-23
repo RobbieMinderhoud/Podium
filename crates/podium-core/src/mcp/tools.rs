@@ -329,6 +329,7 @@ impl PodiumTools {
                 todo_ids,
                 scratchpad_ids,
                 p.worktree.unwrap_or(false),
+                None,
             )
             .await
             .map_err(core_error)?;

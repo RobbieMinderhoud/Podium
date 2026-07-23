@@ -1075,8 +1075,11 @@ impl Orchestrator {
     /// when `todo_ids` is empty — to-dos win if both are somehow populated.
     /// When `worktree` is true a fresh git worktree named after the agent is
     /// created under `.podium/worktrees/` and used as the agent's cwd (the
-    /// project must be a git repo). On a start failure the process stays
-    /// listed as `NotStarted` so the user can retry from the UI.
+    /// project must be a git repo). `args_override`, when `Some`, replaces the
+    /// global Settings → Agents default args for this spawn only (still merged
+    /// with the project's `agents.extra_args` per the merge mode). On a start
+    /// failure the process stays listed as `NotStarted` so the user can retry
+    /// from the UI.
     #[allow(clippy::too_many_arguments)] // deliberate: one flat spawn API
     pub async fn spawn_agent(
         &self,
@@ -1087,6 +1090,7 @@ impl Orchestrator {
         todo_ids: Vec<TodoId>,
         scratchpad_ids: Vec<ScratchpadId>,
         worktree: bool,
+        args_override: Option<Vec<String>>,
     ) -> CoreResult<ProcessId> {
         let (root, agents, existing_names) = {
             let inner = self.inner.lock().expect(LOCK_POISONED);
@@ -1191,9 +1195,14 @@ impl Orchestrator {
             .transpose()?;
         // Combine the global default args (Settings → Agents) with the
         // project's `agents.extra_args` per the user's merge mode, and apply
-        // any global command override for this adapter.
+        // any global command override for this adapter. A per-session
+        // `args_override` (from the New agent dialog) replaces the global
+        // default args just for this spawn.
         let ov = global.override_for(&adapter_id);
-        let global_args: &[String] = ov.map(|o| o.default_args.as_slice()).unwrap_or(&[]);
+        let global_args: &[String] = args_override
+            .as_deref()
+            .or_else(|| ov.map(|o| o.default_args.as_slice()))
+            .unwrap_or(&[]);
         let merged_args = settings::merge_args(global.merge_mode, global_args, &agents.extra_args);
         let command_override = ov.and_then(|o| o.command.as_deref());
         let plan = adapter.build_launch(&AgentLaunchCtx {

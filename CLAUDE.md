@@ -258,7 +258,7 @@ maps camelCase JS argument keys to the snake_case Rust parameters.
 | `process_resize`        | `{ processId, cols, rows }`                 | –                 |
 | `process_attach`        | `{ processId, channel: Channel<TermEvent> }`| –                 |
 | `adapters_list`         | –                                           | `AdapterInfo[]`   |
-| `agent_spawn`           | `{ projectId, adapterId?, name?, prompt?, todoIds?, scratchpadIds?, worktree? }` | `ProcessInfo` |
+| `agent_spawn`           | `{ projectId, adapterId?, name?, prompt?, todoIds?, scratchpadIds?, worktree?, args? }` | `ProcessInfo` |
 | `agent_settings_get`    | –                                           | `AgentSettingsDto` |
 | `agent_settings_set_adapter` | `{ adapterId, command?, defaultArgs }` | `AgentSettingsDto` |
 | `agent_settings_set_default_adapter` | `{ adapterId? }` (blank clears) | `AgentSettingsDto` |

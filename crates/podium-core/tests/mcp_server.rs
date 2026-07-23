@@ -599,6 +599,7 @@ async fn spawn_agent_is_capped_at_eight_active_agents_per_project() {
             vec![],
             vec![],
             false,
+            None,
         )
         .await
         .unwrap_or_else(|e| panic!("agent {n} under the cap should spawn: {e}"));
@@ -613,6 +614,7 @@ async fn spawn_agent_is_capped_at_eight_active_agents_per_project() {
             vec![],
             vec![],
             false,
+            None,
         )
         .await
         .expect_err("ninth concurrent agent must be rejected");
@@ -648,6 +650,7 @@ async fn agent_spawned_from_todo_takes_the_todo_name() {
             vec![todo.id],
             vec![],
             false,
+            None,
         )
         .await
         .expect("spawn agent for todo");
@@ -661,6 +664,7 @@ async fn agent_spawned_from_todo_takes_the_todo_name() {
             vec![todo.id],
             vec![],
             false,
+            None,
         )
         .await
         .expect("spawn second agent for todo");
@@ -686,6 +690,7 @@ async fn agent_spawned_from_todo_takes_the_todo_name() {
             vec![todo.id],
             vec![],
             false,
+            None,
         )
         .await
         .expect("spawn named agent for todo");
@@ -723,6 +728,7 @@ async fn spawning_on_a_todo_assigns_the_agent_and_unassign_clears_it() {
             vec![todo.id],
             vec![],
             false,
+            None,
         )
         .await
         .expect("spawn agent for todo");
@@ -770,6 +776,7 @@ async fn removing_an_agent_clears_its_todo_assignment() {
             vec![todo.id],
             vec![],
             false,
+            None,
         )
         .await
         .expect("spawn agent for todo");
@@ -806,6 +813,7 @@ async fn assign_todo_tool_self_assigns_a_running_agent() {
             vec![],
             vec![],
             false,
+            None,
         )
         .await
         .expect("spawn bare agent");
@@ -860,6 +868,7 @@ async fn rename_session_tool_renames_the_calling_agent() {
             vec![],
             vec![],
             false,
+            None,
         )
         .await
         .expect("spawn agent");
@@ -966,6 +975,7 @@ async fn spawning_on_a_scratchpad_assigns_the_agent_and_unassign_clears_it() {
             vec![],
             vec![pad.id],
             false,
+            None,
         )
         .await
         .expect("spawn agent for scratchpad");
@@ -1020,6 +1030,7 @@ async fn spawning_on_both_todo_and_scratchpad_ignores_the_scratchpad() {
             vec![todo.id],
             vec![pad.id],
             false,
+            None,
         )
         .await
         .expect("spawn agent for todo and scratchpad");
@@ -1058,6 +1069,7 @@ async fn spawning_on_a_todo_with_a_bogus_scratchpad_still_succeeds() {
             vec![todo.id],
             vec![bogus_id],
             false,
+            None,
         )
         .await
         .expect("spawn agent for todo, ignoring the bogus scratchpad id");
@@ -1090,6 +1102,7 @@ async fn removing_an_agent_clears_its_scratchpad_assignment() {
             vec![],
             vec![pad.id],
             false,
+            None,
         )
         .await
         .expect("spawn agent for scratchpad");
@@ -1125,6 +1138,7 @@ async fn list_scratchpads_enriches_assigned_agent() {
             vec![],
             vec![pad.id],
             false,
+            None,
         )
         .await
         .expect("spawn agent for scratchpad");
@@ -1292,7 +1306,7 @@ async fn bare_spawn_uses_the_global_default_adapter() {
         .await
         .expect("open project");
     let id = orch
-        .spawn_agent(project_id, None, None, None, vec![], vec![], false)
+        .spawn_agent(project_id, None, None, None, vec![], vec![], false, None)
         .await
         .expect("spawn agent");
 
@@ -1322,7 +1336,7 @@ async fn project_default_adapter_overrides_the_global_one() {
         .await
         .expect("open project");
     let id = orch
-        .spawn_agent(project_id, None, None, None, vec![], vec![], false)
+        .spawn_agent(project_id, None, None, None, vec![], vec![], false, None)
         .await
         .expect("spawn agent");
 
@@ -1356,6 +1370,7 @@ async fn spawn_agent_applies_global_override_and_default_args() {
             vec![],
             vec![],
             false,
+            None,
         )
         .await
         .expect("spawn agent");
@@ -1367,6 +1382,49 @@ async fn spawn_agent_applies_global_override_and_default_args() {
         .map(|p| p.command)
         .expect("process present");
     assert_eq!(command, "/opt/echo --model opus");
+
+    orch.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn spawn_agent_args_override_replaces_global_default_args() {
+    let dir = tempfile::tempdir().expect("tempdir");
+    let settings_file = dir.path().join("agents.json");
+    let orch = Orchestrator::new().with_adapters(AdapterRegistry::new(vec![Arc::new(EchoAdapter)]));
+    orch.set_agent_settings_path(settings_file);
+    orch.set_agent_override(
+        "echo",
+        None,
+        vec!["--model".to_string(), "opus".to_string()],
+    )
+    .expect("set override");
+
+    let project_id = orch
+        .open_project(dir.path().to_path_buf())
+        .await
+        .expect("open project");
+    // A per-session override wins over the global default args.
+    let id = orch
+        .spawn_agent(
+            project_id,
+            Some("echo".to_string()),
+            None,
+            None,
+            vec![],
+            vec![],
+            false,
+            Some(vec!["--model".to_string(), "haiku".to_string()]),
+        )
+        .await
+        .expect("spawn agent");
+
+    let command = orch
+        .list_processes(Some(project_id))
+        .into_iter()
+        .find(|p| p.id == id)
+        .map(|p| p.command)
+        .expect("process present");
+    assert_eq!(command, "echo-agent --model haiku");
 
     orch.shutdown().await;
 }
@@ -1525,6 +1583,7 @@ async fn spawn_agent_in_worktree_on_a_non_git_project_fails_cleanly() {
             vec![],
             vec![],
             true,
+            None,
         )
         .await
         .expect_err("worktree spawn on a non-git project must fail");
@@ -1554,6 +1613,7 @@ async fn remove_worktree_is_refused_while_an_agent_runs_in_it() {
             vec![],
             vec![],
             true,
+            None,
         )
         .await
         .expect("spawn agent in worktree");

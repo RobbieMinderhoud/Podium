@@ -153,6 +153,11 @@ export interface AgentSpawnOptions {
    * after it (requires the project to be a git repository).
    */
   worktree?: boolean;
+  /**
+   * CLI args for this spawn only; replaces the global Settings → Agents
+   * default args (still merged with the project's `agents.extra_args`).
+   */
+  args?: string[];
 }
 
 /** One Podium-managed git worktree (`podium_core::WorktreeInfo`). */

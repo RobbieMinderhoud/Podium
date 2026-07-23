@@ -105,4 +105,41 @@ describe("NewAgentModal worktree checkbox", () => {
     const options = spawnAgent.mock.calls[0][1];
     expect(options.worktree).toBeUndefined();
   });
+
+  it("seeds the args field from settings and passes edits per session", async () => {
+    agentSettingsGetMock.mockResolvedValue({
+      ...SETTINGS,
+      adapters: [
+        {
+          id: "claude-code",
+          displayName: "Claude Code",
+          available: true,
+          binary: "claude",
+          command: "",
+          defaultArgs: ["--model", "opus"],
+        },
+      ],
+    });
+    const { spawnAgent } = seedSpawn();
+    render(
+      <NewAgentModal open projectId={PROJECT} onClose={() => undefined} />,
+    );
+    await screen.findByText("Claude Code");
+
+    // Seeded from the adapter's default args.
+    const argsInput =
+      await screen.findByLabelText<HTMLInputElement>("Arguments");
+    await waitFor(() => expect(argsInput.value).toBe("--model opus"));
+
+    // Edit for this session and spawn.
+    fireEvent.change(argsInput, { target: { value: "--model haiku" } });
+    fireEvent.click(screen.getByRole("button", { name: "Start agent" }));
+
+    await waitFor(() =>
+      expect(spawnAgent).toHaveBeenCalledWith(
+        PROJECT,
+        expect.objectContaining({ args: ["--model", "haiku"] }),
+      ),
+    );
+  });
 });

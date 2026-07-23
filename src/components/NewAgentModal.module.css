@@ -49,6 +49,15 @@
   cursor: pointer;
 }
 
+/* The global `input` rule sets width:100% + padding, which stretches the
+   checkbox and pushes its label off-screen. Reset it back to intrinsic size. */
+.checkboxLabel input {
+  width: auto;
+  padding: 0;
+  margin: 0;
+  flex: none;
+}
+
 .help {
   margin: var(--sp-1) 0 0;
   font-size: var(--fs-sm);

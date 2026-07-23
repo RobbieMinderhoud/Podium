@@ -203,6 +203,7 @@ export function agentSpawn(
     todoIds: options.todoIds ?? null,
     scratchpadIds: options.scratchpadIds ?? null,
     worktree: options.worktree ?? null,
+    args: options.args ?? null,
   });
 }
 
